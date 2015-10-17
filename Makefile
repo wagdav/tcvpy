@@ -46,7 +46,7 @@ clean-test:
 	rm -fr htmlcov/
 
 lint:
-	flake8 mcf tests
+	flake8 tcv tests
 
 test:
 	python setup.py test
@@ -55,18 +55,18 @@ test-all:
 	tox
 
 coverage:
-	coverage run --source mcf setup.py test
+	coverage run --source tcv setup.py test
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs:
-	rm -f docs/mcf.rst
+	rm -f docs/tcv.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ mcf
+	sphinx-apidoc -e -o docs/ tcv
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
+	@echo Documentation built in docs/_build/html/index.html
 
 servedocs: docs
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .

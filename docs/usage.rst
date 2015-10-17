@@ -2,6 +2,6 @@
 Usage
 ========
 
-To use MCF in a project::
+To use tcvpy in a project::
 
-    import mcf
+    import tcv

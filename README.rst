@@ -1,18 +1,17 @@
-===============================
-MCF
-===============================
+tcvpy
+=====
 
-.. image:: https://img.shields.io/travis/wagdav/mcf.svg
-        :target: https://travis-ci.org/wagdav/mcf
+.. image:: https://img.shields.io/travis/wagdav/tcvpy.svg
+        :target: https://travis-ci.org/wagdav/tcvpy
 
-.. image:: https://img.shields.io/pypi/v/mcf.svg
-        :target: https://pypi.python.org/pypi/mcf
+.. image:: https://img.shields.io/pypi/v/tcvpy.svg
+        :target: https://pypi.python.org/pypi/tcvpy
 
 
-Python data access library for magnetic confinement fusion (MCF) experiments
+Python data access library for the Tokamak à Configuration Variable (TCV) experiments
 
 * Free software: GPL 2
-* Documentation: https://mcf.readthedocs.org.
+* Documentation: https://tcvpy.readthedocs.org.
 
 Features
 --------

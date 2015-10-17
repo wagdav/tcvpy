@@ -15,7 +15,7 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read().replace('.. :changelog:', '')
 
 requirements = [
-    # TODO: put package requirements here
+    'xray'
 ]
 
 test_requirements = [
@@ -23,23 +23,23 @@ test_requirements = [
 ]
 
 setup(
-    name='mcf',
+    name='tcvpy',
     version='0.1.0',
-    description="Python data access library for magnetic confinement fusion (MCF) experiments",
+    description="Python data access library for TCV experiments",
     long_description=readme + '\n\n' + history,
     author="David Wagner",
     author_email='wagdav@gmail.com',
     url='https://github.com/wagdav/mcf',
     packages=[
-        'mcf',
+        'tcv',
     ],
-    package_dir={'mcf':
-                 'mcf'},
+    package_dir={'tcv':
+                 'tcv'},
     include_package_data=True,
     install_requires=requirements,
     license="ISCL",
     zip_safe=False,
-    keywords='mcf',
+    keywords='tcvpy',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
