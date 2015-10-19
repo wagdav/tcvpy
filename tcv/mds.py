@@ -3,9 +3,18 @@
 from itertools import cycle
 
 import xray
-import MDSplus as mds
 
 from .datasource import DataSource
+
+# Defer ImportError till the first use of the mds module. This hack is only
+# here to make the documentation compile on readthedocs.org.
+try:
+    import MDSplus as mds
+except ImportError:
+    class Mock(object):
+        def __getattr__(self, attr):
+            raise ImportError("MDSplus was not successfuly imported")
+    mds = Mock()
 
 
 class MDSConnection(DataSource):
