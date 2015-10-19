@@ -11,10 +11,10 @@ from .datasource import DataSource
 try:
     import MDSplus as mds
 except ImportError:
-    class Mock(object):
+    class _Mock(object):
         def __getattr__(self, attr):
             raise ImportError("MDSplus was not successfuly imported")
-    mds = Mock()
+    mds = _Mock()
 
 
 class MDSConnection(DataSource):
