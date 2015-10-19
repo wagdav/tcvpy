@@ -40,7 +40,7 @@ class MDSConnection(DataSource):
         self._conn = mds.Connection(server)
         self._conn.openTree(tree, shot)
 
-    def tdi(self, cmd, dims=None):
+    def tdi(self, cmd, *args, **kwargs):
         """
         Execute a TDI command.
 
@@ -48,6 +48,11 @@ class MDSConnection(DataSource):
         ----------
         cmd : str
             The TDI command to execute.
+        args : variable length argument list
+            Arguments to be passed to the TDI command
+
+        Keyword arguments
+        -----------------
         dims : str or sequence of str, optional
             Name(s) of the the data dimension(s). Must be either a string (only
             for 1D data) or a sequence of strings with length equal to the
@@ -55,15 +60,16 @@ class MDSConnection(DataSource):
             are taken from the MDS tree (if possible) and otherwise default to
             ``['dim_0', ... 'dim_n']``.
         """
-        return self._as_xray(cmd, dims)
+        return self._as_xray(cmd, *args, **kwargs)
 
     def close(self):
         self._conn.closeTree(self.tree, self.shot)
 
-    def _as_xray(self, query, dims=None):
+    def _as_xray(self, query, *args, **kwargs):
         """ Read one signal through the connection """
 
-        data = self._conn.get(query).data()
+        data = self._conn.get(query, *args).data()
+        dims = kwargs.get('dims', None)
 
         if dims:
             if not isinstance(dims, (list, tuple)):
@@ -76,7 +82,7 @@ class MDSConnection(DataSource):
         coords = {}
         for i, dim_name in zip(xrange(MDSConnection._MAX_DIMS), dims):
             try:
-                coords.update(self._get_dim(i, query, dim_name))
+                coords.update(self._get_dim(i, query, dim_name, *args))
             except mds.MdsException:
                 break
 
@@ -86,18 +92,18 @@ class MDSConnection(DataSource):
 
         return xray.DataArray(data, coords=coords, name=query, attrs=attrs)
 
-    def _get_dim(self, i, query, name=None):
+    def _get_dim(self, i, query, name, *args):
         """ Get i-th dimension of the specified query. """
 
         dim_of = r'dim_of({}, {})'.format(query, i)
         name_of = r'name_of({})'.format(dim_of)
 
         try:
-            dim_name = self._conn.get(name_of)
+            dim_name = self._conn.get(name_of, *args)
         except mds.MdsException:
             dim_name = name if name else 'dim_{}'.format(i)
 
-        return {dim_name: self._conn.get(dim_of).data()}
+        return {dim_name: self._conn.get(dim_of, *args).data()}
 
     def _get_units(self, query):
         """ Get the physical units of the specified query """
