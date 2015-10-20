@@ -69,7 +69,8 @@ class MDSConnection(DataSource):
     def _as_xray(self, query, *args, **kwargs):
         """ Read one signal through the connection """
 
-        data = self._conn.get(query, *args).data()
+        # arrays are returned in column-major (Fortran) order so we use .T
+        data = self._conn.get(query, *args).data().T
         dims = kwargs.get('dims', None)
 
         if dims:
