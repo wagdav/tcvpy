@@ -1,5 +1,6 @@
 """ TCV MDS datasource """
 
+from collections import OrderedDict
 from itertools import cycle
 
 import xray
@@ -79,7 +80,7 @@ class MDSConnection(DataSource):
         else:
             dims = cycle([''])
 
-        coords = {}
+        coords = OrderedDict()
         for i, dim_name in zip(xrange(MDSConnection._MAX_DIMS), dims):
             try:
                 coords.update(self._get_dim(i, query, dim_name, *args))
