@@ -7,6 +7,8 @@ Submodules
 .. toctree::
 
    tcv.datasource
+   tcv.equilibrium
+   tcv.geom
    tcv.mds
 
 Module contents
