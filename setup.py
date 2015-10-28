@@ -28,7 +28,7 @@ setup(
     long_description=readme + '\n\n' + history,
     author="David Wagner",
     author_email='wagdav@gmail.com',
-    url='https://github.com/wagdav/mcf',
+    url='https://github.com/wagdav/tcvpy',
     packages=[
         'tcv',
     ],
