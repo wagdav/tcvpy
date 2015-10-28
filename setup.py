@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+# pylint: disable=invalid-name
 
 try:
     from setuptools import setup
@@ -14,9 +14,8 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read().replace('.. :changelog:', '')
 
-requirements = [
-    'xray'
-]
+with open('requirements.txt') as requirements_file:
+    requirements = requirements_file.read().splitlines()
 
 test_requirements = [
     # TODO: put package test requirements here
