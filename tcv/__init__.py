@@ -32,11 +32,16 @@ def shot(shotnum=0, tree='tcv_shot', server='tcvdata.epfl.ch'):
 
     Parameters
     ----------
-    shotnum : int
-        Shot number
+    shotnum : int or MDSConnection instance
+        Shot number or an open MDS connection
     tree : str, optional
         Name of the tree to open
     server : str, optional
         MDS database server
     """
-    return MDSConnection(shotnum, tree, server)
+
+    if isinstance(shotnum, MDSConnection):
+        conn = shotnum
+        return MDSConnection(conn.shot, conn.tree, conn.server)
+    else:
+        return MDSConnection(shotnum, tree, server)
