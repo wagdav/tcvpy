@@ -3,19 +3,10 @@
 from collections import OrderedDict
 from itertools import cycle
 
+import MDSplus as mds
 import xray
 
 from .datasource import DataSource
-
-# Defer ImportError till the first use of the mds module. This hack is only
-# here to make the documentation compile on readthedocs.org.
-try:
-    import MDSplus as mds
-except ImportError:
-    class _Mock(object):
-        def __getattr__(self, attr):
-            raise ImportError("MDSplus was not successfuly imported")
-    mds = _Mock()
 
 
 class MDSConnection(DataSource):
