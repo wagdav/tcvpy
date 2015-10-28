@@ -21,9 +21,10 @@ __author__ = 'David Wagner'
 __email__ = 'wagdav@gmail.com'
 __version__ = '0.1.0'
 
-__all__ = ['shot']
+__all__ = ['shot', 'tcvview']
 
 from . mds import MDSConnection
+from . geom import tcvview
 
 
 def shot(shotnum=0, tree='tcv_shot', server='tcvdata.epfl.ch'):
