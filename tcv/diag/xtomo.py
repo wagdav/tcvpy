@@ -74,10 +74,23 @@ class XtomoCamera(object):
         self.trange=kwargs.get('trange',[-0.01,2.2])
 
 #    @staticmethod
-    def fromshot(shotnum, camera, **kwargs):
+    def fromshot(self, shotnum, camera, **kwargs):
         # first of all define the proper los
 
 
+    def channels(self,**kwargs):
+        """
+        Return the names of the data acquisition channels as asked in the init method
+
+        """
+        if (self.nCamera < 10):
+            stringa = '0' + str(self.nCamera)
+        else:
+            stringa = str(self.nCamera)
+        _Names = self.tcv.getNode(r'\base::xtomo:array_0' + stringa + ':source').data()
+
+        if np.size(self.los) != 20:
+            _Names=_Names[self.nDiods]
 
 
 class camera(XTOMO):
