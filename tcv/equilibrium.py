@@ -120,12 +120,9 @@ class LiuqeEquilibrium(Equilibrium):
     >>> eq.plot()
     """
     def __init__(self, data):
-        self.rho = data['rho']
-        self.vol = data['vol']
         self.r = data['r']
         self.z = data['z']
         self.psi = data['psi']
-        self.grho = data['grho']
 
         self.time = float(data['time'])
         self.shot = int(data['shot'])
@@ -136,35 +133,22 @@ class LiuqeEquilibrium(Equilibrium):
     @classmethod
     def fromshot(cls, shotnum, time):
         with tcv.shot(shotnum) as conn:
-            volume = conn.tdi(r'\results::psitbx:vol[*,$1]', time, dims='rho')
             psi = conn.tdi(r'\results::psi[*,*,$1]', time, dims=['r', 'z'])
             psi_axis = conn.tdi(r'\results::psi_axis[$1]', time)
-            grho = conn.tdi(r'\results::psitbx:grho[*,$1]', time)
             r0 = float(conn.tdi(r'\results::r_axis[$1]', time))
             z0 = float(conn.tdi(r'\results::z_axis[$1]', time))
 
         data = {
-            'rho': volume.rho,
-            'vol': volume.values,
             'r': psi.r,
             'z': psi.z,
             'psi': (psi / psi_axis).values,
-            'grho': grho.values,
             'r0': r0,
             'z0': z0,
             'time': time,
-            'shot': volume.shot
+            'shot': psi.shot
         }
 
         return cls(data)
-
-    def get_volume(self, rho_out):
-        vol_out = np.interp(rho_out, self.rho, self.vol)
-        return vol_out
-
-    def get_grho(self, rho_out):
-        grho_out = np.interp(rho_out, self.rho, self.grho)
-        return grho_out
 
     def get_psi_contours(self):
         rr, zz = np.meshgrid(self.r, self.z)
