@@ -5,47 +5,29 @@ __author__  = 'Nicola Vianello'
 __version__ = '0.1'
 __date__    = '01.12.2015'
 
-import MDSplus as mds
+import MDSplus
 import numpy as np
 import scipy as sp
 from scipy import io
 import matplotlib as mpl
 import xray # this is needed as tdi save into an xray
-import tcv
-# this are needed for the geo part
-from matplotlib.patches import PathPatch
-from matplotlib import patches
-# import some of the personal libraries
-import os
-home = os.path.expanduser("~")
-import sys
-# platform dependent definition of libreary
-if sys.platform == 'darwin':
-    libD=home+'/Documents/Fisica/Computing/pythonlib/'
-else:
-    libD=home+'/pythonlib/'
-sys.path.append(libD + 'plotting')
-import plotutils
+import tcv  # this is the tcv main library component
 # to get the proper directory of the location of the package
 _package_folder = os.path.dirname(os.path.realpath(__file__))
 class XtomoCamera(object):
+
     """
     Python class for Loading a single XtomoCamera with appropriate LoS chosen
     eventually diagnostic analysis. As an input it just receive
     the shot number.
-    Input:
-    shot   = shot number
-    Additional Input:
-    los = single/array of los
-    trange = range of time interest
     Method:
-        fromshot = just read the calibrated data eventually in the interval chosen
-        channels = Return the names of the chosen channels as found in the MDSplus tree
-        plot = plot all the Chosen LoS
-        gain = save the gain of the channels
-        geo = provide a TCV_polview with the chosen LoS plot
-        spectrogram = compute the spectrogram of all the Diods chosen
-        specplot = plot the spectrogram of all the diods
+        'fromshot' = just read the calibrated data eventually in the interval chosen
+        'channels' = Return the names of the chosen channels as found in the MDSplus tree
+        'plot' = plot all the Chosen LoS
+        'gain' = save the gain of the channels
+        'geo' = provide a TCV_polview with the chosen LoS plot
+        'spectrogram' = compute the spectrogram of all the Diods chosen
+        'specplot' = plot the spectrogram of all the diods
 
     """
 
@@ -62,9 +44,9 @@ class XtomoCamera(object):
             self.los  = np.asarray(self.los ,dtype='int')
         # calibration neeeds to be called at the init of the camera
         if self.shot <= 34800:
-            self.catDefault = sp.io.loadmat(_package_folder+'/cat_defaults2001.mat')
+            self.catDefault = sp.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2001.mat')
         else:
-            self.catDefault = sp.io.loadmat(_package_folder+'/cat_defaults2008.mat')
+            self.catDefault = sp.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2008.mat')
 
         self.angFact = self.catDefault['angfact']
         # choose those pertaining to the chosen camera
@@ -73,24 +55,133 @@ class XtomoCamera(object):
         self.los -= 1
         self.trange=kwargs.get('trange',[-0.01,2.2])
 
-#    @staticmethod
-    def fromshot(self, shotnum, camera, **kwargs):
+
+    def fromshot(self, **kwargs):
+        """
+        Return the calibrated signal of the XtomoCamera LoS chosen in the init action
+        Parameters
+        ----------
+            None
+
+        Returns
+        -------
+            calibrated signals as an xray data structure
+
+        Examples
+        ----------
+        In [1]: import tcv
+        In [2]: cm= tcv.diag.XtomoCamera(shot,nCamera,los=los)
+        In [3]: data = cm.fromshot()
+
+        """
+
         # first of all define the proper los
+        _Names = self.channels()
+        _g,_a = self.gains()
+        _values=[]
+        for _n in _Names:
+            values.append(self.conn.tdi(_n,dims='time'))
+        data = xray.concat(values,dim='los')
+        # we remove the offset before the shot
+        data -= data.where(data.time<0).mean(dim='time')
+        # we limit to the chosen time interval
+        data =data.sel(time=(time>self.trange[0]) & (time <= self.trange[1]))
+        # and now we normalize conveniently
+        data *= np.tile(_a,(data.values.shape[0],1))/np.tile(_g,(data.values.shape[0],1))
 
+        # now we need the appropriate gains to provide the calibrated signal
+        return data
 
-    def channels(self,**kwargs):
+    def channels(self):
         """
-        Return the names of the data acquisition channels as asked in the init method
+        Provide the names of the channel chosen in the init action
+        Parameters
+        ----------
+        None
 
+        Returns
+        -------
+         String array with the names
         """
+
         if (self.nCamera < 10):
             stringa = '0' + str(self.nCamera)
         else:
             stringa = str(self.nCamera)
-        _Names = self.tcv.getNode(r'\base::xtomo:array_0' + stringa + ':source').data()
+
+        _Names = self.conn.tdi(r'\base::xtomo:array_0' + stringa + ':source')
 
         if np.size(self.los) != 20:
             _Names=_Names[self.nDiods]
+        return _Names.values
+
+    def gains(self, **kwargs):
+        """
+
+        Parameters
+        ----------
+        kwargs
+
+        Returns
+        -------
+        return the gains and the moltiplication factor for the chosen camera and LoS
+        """
+        if (self.nCamera < 10):
+            stringa = '00' + str(self.nCamera)
+        else:
+            stringa = '0' + str(self.nCamera)
+        gAins = np.zeros(20)
+        aOut = np.zeros(20)
+        # remeber that we need to collect all the values of gains
+        # and we decide to choose the only needed afterwards
+        for diods in range(20):
+            if diods < 9:
+                strDiods = '00'+str(diods+1)
+            else:
+                strDiods ='0'+str(diods+1)
+            _str='\\vsystem::tcv_publicdb_i["XTOMO_AMP:'+stringa+'_'+strDiods+'"]'
+            out = self.conn.tdi(_str)
+            gAins[diods]=10**out.values
+            aOut[diods]=self.angFact[diods]
+
+        # now we need to reorder to take into account the ordering of the diodes
+        if self.shot<= 34800:
+            index=np.asarray([np.arange(1,180,1),180+[2,1,4,3,6,5,8,7,10,9,12,11,14,13,16,15,18,17,20,19]])
+            index -= 1 # remember that matlab start from 1
+        else:
+            aZ=np.arange(1,21,1)
+            bZ=np.arange(40,20,-1)
+            cZ=np.arange(60,40,-1)
+            dZ=np.arange(61,101,1)
+            eZ=np.arange(120,100,-1)
+            fZ=np.arange(140,120,-1)
+            gZ=np.arange(141,161,1)
+            hZ=np.arange(180,160,-1)
+            iZ=np.arange(200,180,-1)
+            index=np.append(aZ,np.append(bZ,np.append(cZ,np.append(dZ,
+                                                                   np.append(eZ,np.append(fZ,
+                                                                                          np.append(gZ,
+                                                                                                    np.append(hZ,iZ))))))))
+            index -= 1 # remember that matlab start from 1
+
+        #
+
+        mask = (self.nCamera-1)*20+np.arange(0,20,1)
+        ia = np.argsort(index[np.arange(index.shape[0])[np.in1d(index, mask)]])
+        gAins=gAins[ia]
+
+
+        # we now need to choose only the gains for the given diods
+        # just in case we have a single diods we reduce to a single element
+        if np.size(self.los)!=20:
+            gAins = gAins[self.los]
+            aOut  = aOut[self.los]
+
+        return gAins,aOut
+
+    def geo(self, **kwargs):
+
+
 
 
 class camera(XTOMO):
