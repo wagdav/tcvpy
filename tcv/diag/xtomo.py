@@ -2,7 +2,7 @@ __author__  = 'Nicola Vianello'
 __version__ = '0.1'
 __date__    = '01.12.2015'
 
-import MDSplus
+
 import numpy as np
 import scipy as sp
 from scipy import io # this is needed to load the settings of xtomo
@@ -53,8 +53,8 @@ class XtomoCamera(object):
         self.los -= 1
         self.trange=kwargs.get('trange',[-0.01,2.2])
 
-
-    def fromshot(self, **kwargs):
+    @classmethod
+    def fromshot(cls, shot,camera,los=None,trange=None):
         """
         Return the calibrated signal of the XtomoCamera LoS chosen in the init action
         Parameters
@@ -72,6 +72,16 @@ class XtomoCamera(object):
         In [3]: data = cm.fromshot()
 
         """
+        # define the LoS
+        if los == None:
+            los = np.arange(20).astype('int')+1
+        else:
+            los = np.asarray(los).astype('int')
+
+        # define the trange
+        if trange = None:
+            trange = [-0.01,2.2]
+
 
         # first of all define the proper los
         _Names = self.channels()
@@ -80,13 +90,15 @@ class XtomoCamera(object):
         for _n in _Names:
             values.append(self.conn.tdi(_n,dims='time'))
         data = xray.concat(values,dim='los')
+        data['los']=los
         # we remove the offset before the shot
         data -= data.where(data.time<0).mean(dim='time')
         # we limit to the chosen time interval
-        data = data[:,((data.time>self.trange[0]) & (data.time <= self.trange[1]))]
+        data = data[:,((data.time> trange[0]) & (data.time <= trange[1]))]
         # and now we normalize conveniently
-        data *= np.tile(_a,(data.values.shape[0],1))/np.tile(_g,(data.values.shape[0],1))
-
+        data *= np.transpose(np.tile(_a,(data.values.shape[1],1))/np.tile(_g,(data.values.shape[1],1)))
+        # we add also to the attributes the number of the camera
+        data.attrs.update({'camera':self.camera})
         # now we need the appropriate gains to provide the calibrated signal
         return data
 
@@ -193,15 +205,15 @@ class XtomoCamera(object):
         ch = self.fromshot()
 
         if np.size(self.los) == 20:
-            fig, axarr = mpl.pyplot.subplots(figsize = plotutils.cm2inch(40, 24),
+            fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
                                              nrows = 4,
                                              ncols = 5, sharex = True)
         elif np.size(self.los) > 1 and np.size(self.los)<20:
-           fig, axarr = mpl.pyplot.subplots(figsize = plotutils.cm2inch(40, 24),
+           fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
                                          nrows = np.round(np.size(self.los)/2),
                                            ncols = 2, sharex = True)
         else:
-            fig,axarr = mpl.pyplot.subplots(figsize=plotutils.cm2inch(14,14),
+            fig,axarr = mpl.pyplot.subplots(figsize=plotutils.cm2inch(6,6),
                                             nrows=1,ncols=1)
         if np.size(self.los) != 1:
            for i in range(ch.shape[0]):
@@ -255,16 +267,16 @@ class XtomoCamera(object):
         from palettable.colorbrewer.sequential import Oranges_3
        # now you can start the plotting as done for plo
         if np.size(self.los) == 20:
-            fig, axarr = mpl.pyplot.subplots(figsize = plotutils.cm2inch(40, 24),
+            fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
                                              nrows = 4,
                                              ncols = 5, sharex = True, sharey = True)
         elif np.size(self.los) > 1 and np.size(self.los)<20:
              nrows = np.int(np.round(np.size(self.los)/2.))
-             fig, axarr = mpl.pyplot.subplots(figsize = plotutils.cm2inch(40, 24),
+             fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
                                               nrows = nrows,
                                               ncols = 2, sharex = True, sharey = True)
         else:
-            fig,axarr = mpl.pyplot.subplots(figsize=plotutils.cm2inch(14,14),
+            fig,axarr = mpl.pyplot.subplots(figsize= (6,6),
                                             nrows=1,ncols=1)
         if np.size(self.los) != 1:
            for i in range(sp.shape[2]):
