@@ -53,8 +53,7 @@ class XtomoCamera(object):
         self.los -= 1
         self.trange=kwargs.get('trange',[-0.01,2.2])
 
-    @classmethod
-    def fromshot(cls, shot,camera,los=None,trange=None):
+    def fromshot(self, **kwargs):
         """
         Return the calibrated signal of the XtomoCamera LoS chosen in the init action
         Parameters
@@ -72,17 +71,6 @@ class XtomoCamera(object):
         In [3]: data = cm.fromshot()
 
         """
-        # define the LoS
-        if los == None:
-            los = np.arange(20).astype('int')+1
-        else:
-            los = np.asarray(los).astype('int')
-
-        # define the trange
-        if trange = None:
-            trange = [-0.01,2.2]
-
-
         # first of all define the proper los
         _Names = self.channels()
         _g,_a = self.gains()
@@ -90,11 +78,11 @@ class XtomoCamera(object):
         for _n in _Names:
             values.append(self.conn.tdi(_n,dims='time'))
         data = xray.concat(values,dim='los')
-        data['los']=los
+        data['los']= self.los + 1
         # we remove the offset before the shot
         data -= data.where(data.time<0).mean(dim='time')
         # we limit to the chosen time interval
-        data = data[:,((data.time> trange[0]) & (data.time <= trange[1]))]
+        data = data[:,((data.time> self.trange[0]) & (data.time <= self.trange[1]))]
         # and now we normalize conveniently
         data *= np.transpose(np.tile(_a,(data.values.shape[1],1))/np.tile(_g,(data.values.shape[1],1)))
         # we add also to the attributes the number of the camera
@@ -196,7 +184,9 @@ class XtomoCamera(object):
         if plt == True:
             tcv.tcvview(self.shot,t0)
             ax=mpl.pylab.gca()
-            ax.plot(xchor,ychord,'k--',linewidth=2)
+            ax.plot(xchord,ychord,'k--')
+            for l in range(self.los.size):
+                ax.text(xchord[1,l]-0.03,ychord[1,l]-0.03,str(self.los[l]+1),color='green')
         return (xchord,ychord)
 
     def plot(self):
@@ -231,8 +221,8 @@ class XtomoCamera(object):
 
     def spectrogram(self,**kwargs):
         import matplotlib as mpl
-        _s = self.read()
-        _t= _s.time
+        _s = self.fromshot()
+        _t= _s.time.values
         dt = (_t.max()-_t.min())/(_t.size-1)
         Fs = np.round(1./dt)
         NFFT= kwargs.get('NFFT',2048)
@@ -244,27 +234,24 @@ class XtomoCamera(object):
         else:
             _du,fr,tsp = mpl.mlab.specgram(_s.values[0,:], Fs = Fs, NFFT = NFFT,
                                            detrend = 'linear', scale_by_freq = True, pad_to = 3*NFFT)
-            sp = np.zeros((_du.shape[0],_du.shape[1],_s.shape[1]))
+            sp = np.zeros((_du.shape[0],_du.shape[1],self.los.size))
             sp[:,:,0]= _du
             tsp += _t.min()
             for i in range(_s.shape[0]-1):
-                _du,fr,tsp = mpl.mlab.specgram(_s[i+1,:], Fs = Fs, NFFT = NFFT,
+                _du,fr,tsp = mpl.mlab.specgram(_s.values[i+1,:], Fs = Fs, NFFT = NFFT,
                                                detrend = 'linear', scale_by_freq = True, pad_to = 3*NFFT)
                 sp[:,:,i+1] = _du
-        if self.los.size == 1:
-            sp = sp[:,:,0]
         return sp,fr,tsp
 
     def specplot(self,**kwargs):
         NFFT = kwargs.get('NFFT',2048)
         save = kwargs.get('save',False)
         sp,fr,tsp = self.spectrogram(NFFT=NFFT)
-        if sys.platform == 'darwin':
-            libC = '/Users/vianello/Documents/Fisica/pytholib/'
+        if mpl.__version__ >= 1.5:
+            cmap = mpl.cm.viridis
         else:
-            libC= '/home/vianello/pythonlib/'
-        sys.path.append(libC+'submodules/palettable')
-        from palettable.colorbrewer.sequential import Oranges_3
+            cmap = mpl.cm.Spectral
+
        # now you can start the plotting as done for plo
         if np.size(self.los) == 20:
             fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
@@ -281,7 +268,7 @@ class XtomoCamera(object):
         if np.size(self.los) != 1:
            for i in range(sp.shape[2]):
                  axarr.flat[i].imshow(np.log10(sp[:,:,i]),aspect='auto',origin='lower',
-                                        extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),cmap=Oranges_3.mpl_colormap)
+                                        extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),cmap=cmap)
 
                  axarr.flat[i].set_xlabel(r't[s]')
                  axarr.flat[i].set_ylabel(r'f [kHz]')
@@ -290,7 +277,7 @@ class XtomoCamera(object):
         else:
             axarr.imshow(np.log10(sp),aspect='auto',origin='lower',
                                         extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),
-                         cmap=Oranges_3.mpl_colormap)
+                         cmap=cmap)
             axarr.set_xlabel(r't[s]')
             axarr.set_title('# '+str(self.shot)+' cam '+str(self.camera)+' ph '+
                 str(self.los + 1),fontsize=10)
