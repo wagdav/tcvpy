@@ -426,3 +426,45 @@ class XtomoCamera(object):
 
         return sp,fr,tsp
 
+
+
+
+# now we want to define a function which use the class to plot all the gains
+
+def plotGains(shot):
+
+    import matplotlib as mpl
+    import numpy as np
+
+    # raw input for the number of shot
+    # we should open the tree otherwise a simple call of camera.gain does not work
+    _gainTot = np.zeros((20, 10))
+    for i in range(10):
+        _g, _a = XtomoCamera.gains(shot,i+1)
+        _gainTot[:, i] = _g
+
+    # now start to cycle. A bit boring but it works
+    fig = mpl.pylab.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111)
+    for i in range(10):
+        for j in range(20):
+            if _gainTot[j, i] == 1:
+                cl = 'black'
+            elif _gainTot[j, i] == 10:
+                cl = '#994d00'
+            elif _gainTot[j, i] == 100:
+                cl = 'red'
+            else:
+                cl = '#ffbf00'
+            ax.plot([i + 1], [j + 1], 's', color = cl, markersize = 16)
+            ax.plot([i + 0.75, i + 1.25], [j + 0.5, j + 0.5], 'k-')
+            ax.plot([i + 0.75, i + 1.25], [j + 1.5, j + 1.5], 'k-')
+    ax.set_yticks(np.arange(20) + 1)
+    ax.set_xticks(np.arange(10) + 1)
+    ax.set_xlim([0, 11])
+    ax.set_ylim([0, 22])
+    ax.set_xlabel('camera')
+    ax.set_ylabel('diods')
+    ax.set_title('Shot # ' + str(shot))
+
+
