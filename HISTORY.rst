@@ -12,3 +12,4 @@ History
 ------------------
 
 * Add the XTOMO diagnostic
+* Add the ECE diagnostic
