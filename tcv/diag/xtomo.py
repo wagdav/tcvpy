@@ -53,7 +53,8 @@ class XtomoCamera(object):
         self.los -= 1
         self.trange=kwargs.get('trange',[-0.01,2.2])
 
-    def fromshot(self, **kwargs):
+    @classmethod
+    def fromshot(Cls, shot, camera, **kwargs):
         """
         Return the calibrated signal of the XtomoCamera LoS chosen in the init action
         Parameters
@@ -71,26 +72,31 @@ class XtomoCamera(object):
         In [3]: data = cm.fromshot()
 
         """
+        # define the appropriate default values
+        Cls.los = kwargs.get('los',np.arange(20).astype('int')+1)
+        Cls.trange = kwargs.get('trange',[-0.01,2.2])
         # first of all define the proper los
-        _Names = self.channels()
-        _g,_a = self.gains()
+        _Names = Cls.channels()
+        _g,_a = Cls.gains()
         values=[]
         for _n in _Names:
             values.append(self.conn.tdi(_n,dims='time'))
         data = xray.concat(values,dim='los')
-        data['los']= self.los + 1
+        data['los']= Cls.los + 1
         # we remove the offset before the shot
         data -= data.where(data.time<0).mean(dim='time')
         # we limit to the chosen time interval
-        data = data[:,((data.time> self.trange[0]) & (data.time <= self.trange[1]))]
+        data = data[:,((data.time> Cls.trange[0]) & (data.time <= Cls.trange[1]))]
         # and now we normalize conveniently
         data *= np.transpose(np.tile(_a,(data.values.shape[1],1))/np.tile(_g,(data.values.shape[1],1)))
         # we add also to the attributes the number of the camera
-        data.attrs.update({'camera':self.camera})
+        data.attrs.update({'camera':Cls.camera})
         # now we need the appropriate gains to provide the calibrated signal
-        return data
+        return Cls(data)
 
-    def channels(self):
+    #@classmethod
+    #def channels(Cls, shot, camera, los=None,):
+    def channels(self, **kwargs):
         """
         Provide the names of the channel chosen in the init action
         Parameters
