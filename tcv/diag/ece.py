@@ -27,11 +27,12 @@ class Lfs(object):
                 frequency = conn.tdi(r'\results::ece_lfs:rf_freqs')
             except:  # FIXME: catch more specific exception
                 frequency = Lfs.DEFAULT_FREQUENCIES
-
+        type(frequency)
         if los:
-            los = np.atleast_1d(los)
+            # remember that we use the los as index for channels
+            los = np.atleast_1d(los)-1
         else:
-            los = np.arange(frequency.size())
+            los = np.arange(frequency.size)
 
         values = []
         used_los = []
@@ -39,7 +40,7 @@ class Lfs(object):
             for i, channel in enumerate(Lfs.channels(conn.shot)):
                 if i in los:
                     values.append(conn.tdi(channel, dims='time'))
-                    used_los.append(i)
+                    used_los.append(i+1)
 
         data = xray.concat(values, dim='los')
         data.coords['los'] = used_los
@@ -68,7 +69,7 @@ class Lfs(object):
         else:
             base = r'\atlas::dt100_northeast_002:channel_'
             numbers = np.asarray([28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18,
-                                  17, 11, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1])
+                                  17, 11, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1])
 
         return [base + format(i, '03') for i in numbers]
 
@@ -78,9 +79,26 @@ class Lfs(object):
         Routine to check which Z position are the LoS for the current shot
         """
 
-        # TODO: finish this routine
+
         with tcv.shot(shotnum) as conn:
-            try:
-                return str(conn.tdi(r'\results::ece_lfs:z_antenna'))
-            except:
-                return None
+            Zant = str(conn.tdi(r'\results::ece_lfs:z_antenna').values)
+
+            if Zant[: 5] == 'Error':
+                pb5 = str(conn.tdi(r'\vsystem::tcv_publicdb_b["ILOT_NO:B5"]').values)
+                pb6 = str(conn.tdi(r'\vsystem::tcv_publicdb_b["ILOT_NO:B6"]').values)
+                if pb5[:3] == 'OFF' and pb6[:3] == 'OFF':
+                    Zant = 0.21 # already transformed in floating
+                    print('LoS at 21 cm ... ')
+                elif pb5[: 3] == 'OFF' and pb6[: 3] == 'ON ':
+                    Zant = 10
+                    print('3rd LoS was used ...  ')
+                elif pb5[: 3] == 'ON ' and pb6[: 3] == 'OFF':
+                    Zant = 0.
+                    print('LoS at 0 cm')
+                elif pb5[: 3] == 'ON ' and pb6[: 3] == 'ON ':
+                    Zant = NaN
+                    print('The LFS ECE radiometer was disconnected')
+            else:
+                Zant = np.float(Zant[: 2]) * 1e-2
+
+        return Zant
