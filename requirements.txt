@@ -2,3 +2,4 @@ matplotlib
 xray
 scipy
 numpy
+MDSplus 
