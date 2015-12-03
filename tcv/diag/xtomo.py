@@ -73,8 +73,8 @@ class XtomoCamera(object):
 
         """
         # define the appropriate default values
-        Cls.los = kwargs.get('los',np.arange(20).astype('int')+1)
-        Cls.trange = kwargs.get('trange',[-0.01,2.2])
+        los = kwargs.get('los',np.arange(20).astype('int')+1)
+        trange = kwargs.get('trange',[-0.01,2.2])
         # first of all define the proper los
         _Names = Cls.channels()
         _g,_a = Cls.gains()
@@ -82,11 +82,11 @@ class XtomoCamera(object):
         for _n in _Names:
             values.append(self.conn.tdi(_n,dims='time'))
         data = xray.concat(values,dim='los')
-        data['los']= Cls.los + 1
+        data['los']= los + 1
         # we remove the offset before the shot
         data -= data.where(data.time<0).mean(dim='time')
         # we limit to the chosen time interval
-        data = data[:,((data.time> Cls.trange[0]) & (data.time <= Cls.trange[1]))]
+        data = data[:,((data.time> trange[0]) & (data.time <= trange[1]))]
         # and now we normalize conveniently
         data *= np.transpose(np.tile(_a,(data.values.shape[1],1))/np.tile(_g,(data.values.shape[1],1)))
         # we add also to the attributes the number of the camera
