@@ -4,63 +4,56 @@ __date__    = '01.12.2015'
 
 
 import numpy as np
-import scipy as sp
+import scipy
 from scipy import io # this is needed to load the settings of xtomo
 import matplotlib as mpl # this is need to get the appropriate gca
 import xray # this is needed as tdi save into an xray
 import tcv  # this is the tcv main library component
-import os
+import os   # for correctly handling the directory position
 # to get the proper directory of the location of the package
 _package_folder = os.path.dirname(os.path.realpath(__file__))
 class XtomoCamera(object):
 
     """
     Python class for Loading a single XtomoCamera with appropriate LoS chosen
-    eventually diagnostic analysis. As an input it just receive
-    the shot number.
+    eventually diagnostic analysis. All the methods are defined as classmethod so
+    they can be called without instances
     Method:
         'fromshot' = just read the calibrated data eventually in the interval chosen
         'channels' = Return the names of the chosen channels as found in the MDSplus tree
-        'plot' = plot all the Chosen LoS
         'gain' = save the gain of the channels
         'geo' = provide a TCV_polview with the chosen LoS plot
         'spectrogram' = compute the spectrogram of all the Diods chosen
-        'specplot' = plot the spectrogram of all the diods
+    Autor:
+        nicola vianello
+    Date:
+        03 December 2015
 
     """
 
-    def __init__(self, shot, camera, **kwargs):
-        # this is the only self defined in init
-        self.shot   = shot
-        # given that you now open the corresponding tree through a connection
-        self.conn   = tcv.shot(self.shot,tree='tcv_shot',server='tcvdata.epfl.ch')
-        self.camera = camera
-        self.los    = kwargs.get('los',np.arange(20).astype('int')+1) # the plus 1 is coincident with the fact that
-        if isinstance(self.los ,int):
-            self.los  = np.asarray([self.los ],dtype='int')
-        else:
-            self.los  = np.asarray(self.los ,dtype='int')
-        # calibration neeeds to be called at the init of the camera
-        if self.shot <= 34800:
-            self.catDefault = sp.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2001.mat')
-        else:
-            self.catDefault = sp.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2008.mat')
-
-        self.angFact = self.catDefault['angfact']
-        # choose those pertaining to the chosen camera
-        self.angFact = self.angFact[:,self.camera-1]
-        # now to we need a -1 to ensure that the nDiods are correctly the indices
-        self.los -= 1
-        self.trange=kwargs.get('trange',[-0.01,2.2])
-
+    def __init__(self, data):
+         # this is the only self defined in init
+         self.shot   = data.attrs['shot']
+         # given that you now open the corresponding tree through a connection
+         self.camera = data.attrs['camera']
+         self.los    = data.los.values # the plus 1 is coincident with the fact that
+         # now to we need a -1 to ensure that the nDiods are correctly the indices
+         self.trange = [data.time.values.min(), data.time.values.max()]
     @classmethod
     def fromshot(Cls, shot, camera, **kwargs):
         """
-        Return the calibrated signal of the XtomoCamera LoS chosen in the init action
+        Return the calibrated signal of the XtomoCamera LoS chosen. It is build as a `classmethod` so
+        can be called without instance
         Parameters
         ----------
-            None
-
+        Input:
+            shot   = shot number
+            camera = number of camera
+        kwargs:
+            los    = Optional argument with LoS of the chosen camera. If not set it loads all the 20 channels
+            trange = trange. If not set it loads up to 2.2 s of discharge
+            plt    = Boolean. Default is False. If True it also plot the results
+            save   = Boolean. If true together with plt it save the pdf of the plot
         Returns
         -------
             calibrated signals as an xray data structure
@@ -68,21 +61,26 @@ class XtomoCamera(object):
         Examples
         ----------
         In [1]: import tcv
-        In [2]: cm= tcv.diag.XtomoCamera(shot,camera,los=los)
-        In [3]: data = cm.fromshot()
+        In [2]: cm= tcv.diag.XtomoCamera.fromshot(shot,camera,los=los)
 
         """
         # define the appropriate default values
         los = kwargs.get('los',np.arange(20).astype('int')+1)
+        if type(los) != np.ndarray:
+            if np.size(los)== 1:
+                los = np.asarray([los], dtype='int')
+            else:
+                los = np.asarray(los,dtype='int')
         trange = kwargs.get('trange',[-0.01,2.2])
         # first of all define the proper los
-        _Names = Cls.channels()
-        _g,_a = Cls.gains()
+        _Names = Cls.channels(shot, camera, los=los)
+        _g,_a  = Cls.gains(shot, camera, los=los)
         values=[]
-        for _n in _Names:
-            values.append(self.conn.tdi(_n,dims='time'))
+        with tcv.shot(shot) as conn:
+            for _n in _Names:
+                values.append(conn.tdi(_n,dims='time'))
         data = xray.concat(values,dim='los')
-        data['los']= los + 1
+        data['los']= los
         # we remove the offset before the shot
         data -= data.where(data.time<0).mean(dim='time')
         # we limit to the chosen time interval
@@ -90,66 +88,129 @@ class XtomoCamera(object):
         # and now we normalize conveniently
         data *= np.transpose(np.tile(_a,(data.values.shape[1],1))/np.tile(_g,(data.values.shape[1],1)))
         # we add also to the attributes the number of the camera
-        data.attrs.update({'camera':Cls.camera})
+        data.attrs.update({'camera':camera})
         # now we need the appropriate gains to provide the calibrated signal
-        return Cls(data)
+        plt = kwargs.get('plt',False)
+        if plt == True:
+            if np.size(los) > 4:
+                fig, axarr = mpl.pyplot.subplots(figsize=(15.7, 9.45),
+                                                 nrows= np.round(los.size/4),
+                                                 ncols=4, sharex=True)
+            else:
+                fig, axarr = mpl.pyplot.subplots(figsize=(15.7, 5.45),
+                                                 nrows=1,
+                                                 ncols=los.size, sharex=True)
+            if np.size(los) != 1:
+                for i in range(data.shape[0]):
+                    axarr.flat[i].plot(data.time, data.values[i, :])
+                    axarr.flat[i].set_xlabel(r't[s]')
+                    axarr.flat[i].set_title('# ' + str(shot) + ' cam ' + str(camera) + ' ph ' + str(los[i]), fontsize=10)
+                    fig.tight_layout()
+            else:
+                axarr.plot(data.time, data.values[0, :])
+                axarr.set_xlabel(r't[s]')
+                axarr.set_title('# ' + str(shot) + ' cam ' + str(camera) + ' ph ' +
+                            str(los + 1), fontsize=10)
+            mpl.pylab.show()
+            save = kwargs.get('save',False)
+            if save == True:
+                mpl.pylab.savefig(pwd+'/Signal_'+str(shot)+'.pdf',bbox_to_inches=True)
+        return (data)
 
-    #@classmethod
-    #def channels(Cls, shot, camera, los=None,):
-    def channels(self, **kwargs):
+    @classmethod
+    def channels(Cls, shot, camera, **kwargs):
         """
         Provide the names of the channel chosen in the init action
         Parameters
         ----------
-        None
+        Input:
+            shot   = shot number
+            camera = number of camera
+        kwargs:
+            los    = Optional. Number of diods
 
         Returns
         -------
          String array with the names
         """
 
-        if (self.camera < 10):
-            stringa = '0' + str(self.camera)
+        los = kwargs.get('los',np.arange(20).astype('int')+1)
+        if type(los) != np.ndarray:
+            if np.size(los)== 1:
+                los = np.asarray([los], dtype='int')
+            else:
+                los = np.asarray(los,dtype='int')
+        # convert los into indices
+        index = los -1
+
+        if (camera < 10):
+            stringa = '0' + str(camera)
         else:
-            stringa = str(self.camera)
+            stringa = str(camera)
+        with tcv.shot(shot) as conn:
+            _Names = conn.tdi(r'\base::xtomo:array_0' + stringa + ':source')
 
-        _Names = self.conn.tdi(r'\base::xtomo:array_0' + stringa + ':source')
-
-        if np.size(self.los) != 20:
-            _Names=_Names[self.los]
+        if np.size(los) != 20:
+            _Names=_Names[index]
         return _Names.values
 
-    def gains(self, **kwargs):
+    @classmethod
+    def gains(Cls, shot, camera, **kwargs):
         """
 
         Parameters
         ----------
-        kwargs
+        Input:
+            shot   = shot number
+            camera = number of camera
+        kwargs:
+            los    = Optional. Number of diods
 
         Returns
         -------
-        return the gains and the moltiplication factor for the chosen camera and LoS
+        return the gains and the multiplication factor for the chosen camera and LoS
         """
-        if (self.camera < 10):
-            stringa = '00' + str(self.camera)
+
+        los = kwargs.get('los',np.arange(20).astype('int')+1)
+        if type(los) != np.ndarray:
+            if np.size(los)== 1:
+                los = np.asarray([los], dtype='int')
+            else:
+                los = np.asarray(los,dtype='int')
+        # to convert we must define an index which is not modified
+        IndeX = los -1
+
+        # calibration neeeds to be called at the init of the camera
+        if shot <= 34800:
+            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2001.mat')
         else:
-            stringa = '0' + str(self.camera)
+            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2008.mat')
+
+        # etendue
+        angFact = catDefault['angfact'][:,camera-1]
+
+        if (camera < 10):
+            stringa = '00' + str(camera)
+        else:
+            stringa = '0' + str(camera)
         gAins = np.zeros(20)
         aOut = np.zeros(20)
         # remeber that we need to collect all the values of gains
         # and we decide to choose the only needed afterwards
-        for diods in range(20):
-            if diods < 9:
-                strDiods = '00'+str(diods+1)
-            else:
-                strDiods ='0'+str(diods+1)
-            _str='\\vsystem::tcv_publicdb_i["XTOMO_AMP:'+stringa+'_'+strDiods+'"]'
-            out = self.conn.tdi(_str)
-            gAins[diods]=10**out.values
-            aOut[diods]=self.angFact[diods]
+        with tcv.shot(shot) as conn:
+            for diods in range(20):
+                if diods < 9:
+                    strDiods = '00'+str(diods+1)
+                else:
+                    strDiods ='0'+str(diods+1)
+                _str='\\vsystem::tcv_publicdb_i["XTOMO_AMP:'+stringa+'_'+strDiods+'"]'
+
+                out = conn.tdi(_str)
+                gAins[diods]=10**out.values
+                aOut[diods]=angFact[diods]
 
         # now we need to reorder to take into account the ordering of the diodes
-        if self.shot<= 34800:
+        if shot<= 34800:
             index=np.asarray([np.arange(1,180,1),180+[2,1,4,3,6,5,8,7,10,9,12,11,14,13,16,15,18,17,20,19]])
             index -= 1 # remember that matlab start from 1
         else:
@@ -168,133 +229,200 @@ class XtomoCamera(object):
                                                                                                     np.append(hZ,iZ))))))))
             index -= 1 # remember that matlab start from 1
 
-        mask = (self.camera-1)*20+np.arange(0,20,1)
+        mask = (camera-1)*20+np.arange(0,20,1)
         ia = np.argsort(index[np.arange(index.shape[0])[np.in1d(index, mask)]])
         gAins=gAins[ia]
 
-
         # we now need to choose only the gains for the given diods
         # just in case we have a single diods we reduce to a single element
-        if np.size(self.los)!=20:
-            gAins = gAins[self.los]
-            aOut  = aOut[self.los]
+        if np.size(los)!=20:
+            gAins = gAins[IndeX]
+            aOut  = aOut[IndeX]
 
         return gAins,aOut
 
-    def geo(self, **kwargs):
+    @classmethod
+    def geo(Cls, shot, camera, **kwargs):
+        """
+
+        Parameters
+        ----------
+        Input:
+            shot: the shot number
+            camera: the camera
+        kwargs:
+            los = the line of sight
+            plt = Boolean, default is False. If True it plot a poloidal cut with the LoS chosen
+        Returns
+        -------
+            the x,y coordinates of the LoS for the chosen camera
+        """
         plt = kwargs.get('plt', True)
-        t0 = kwargs.get('t0', np.mean(self.trange)) # t0 or middle point
+        t0 = kwargs.get('t0', 0.6) # t0 or middle point
+        # loading the Diods
+        los = kwargs.get('los',np.arange(20).astype('int')+1)
+        if type(los) != np.ndarray:
+            if np.size(los)== 1:
+                los = np.asarray([los], dtype='int')
+            else:
+                los = np.asarray(los,dtype='int')
+        # convert los into indices
+        index = los-1
+
+        if shot <= 34800:
+            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2001.mat')
+        else:
+            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2008.mat')
+
+
         # load the chords and the diods use
-        xchord = self.catDefault['xchord'][: , (self.camera - 1) * 20 + self.los] / 100.
-        ychord = self.catDefault['ychord'][: , (self.camera - 1) * 20 + self.los] / 100.
+        xchord = catDefault['xchord'][: , (camera - 1) * 20 + index] / 100.
+        ychord = catDefault['ychord'][: , (camera - 1) * 20 + index] / 100.
+
         if plt == True:
-            tcv.tcvview(self.shot,t0)
+            tcv.tcvview(shot,t0)
             ax=mpl.pylab.gca()
             ax.plot(xchord,ychord,'k--')
-            for l in range(self.los.size):
-                ax.text(xchord[1,l]-0.03,ychord[1,l]-0.03,str(self.los[l]+1),color='green')
+            for l in range(los.size):
+                ax.text(xchord[1,l]-0.03,ychord[1,l]-0.03,str(index[l]+1),color='green')
         return (xchord,ychord)
 
-    def plot(self):
-        # this is just to plot the data of the camera
-        # being 20 plot
-        ch = self.fromshot()
+    @classmethod
+    def spectrogram(Cls, shot, camera, nfft=1024, ftStep=2,
+                    ftPad=5, ftWidth=0.4, wGauss=True, **kwargs):
+        """
+        It compute the spectrogam for the chosen signals in the chosen camera.
 
-        if np.size(self.los) == 20:
-            fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
-                                             nrows = 4,
-                                             ncols = 5, sharex = True)
-        elif np.size(self.los) > 1 and np.size(self.los)<20:
-           fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
-                                         nrows = np.round(np.size(self.los)/2),
-                                           ncols = 2, sharex = True)
-        else:
-            fig,axarr = mpl.pyplot.subplots(figsize=plotutils.cm2inch(6,6),
-                                            nrows=1,ncols=1)
-        if np.size(self.los) != 1:
-           for i in range(ch.shape[0]):
-                 axarr.flat[i].plot(ch.time, ch.values[i,:])
-                 axarr.flat[i].set_xlabel(r't[s]')
-                 axarr.flat[i].set_title('# '+str(self.shot)+' cam '+str(self.camera)+' ph '+str(self.los[i] + 1),fontsize=10)
-                 fig.tight_layout()
-        else:
-            axarr.plot(ch.time, ch.values[0,:])
-            axarr.set_xlabel(r't[s]')
-            axarr.set_title('# '+str(self.shot)+' cam '+str(self.camera)+' ph '+
-                str(self.los + 1),fontsize=10)
-        mpl.pylab.show()
+        Parameters
+        ----------
+        Input:
+            shot   = shot number
+            camera = number of camera
+        kwargs:
+            los    = Optional argument with LoS of the chosen camera. If not set it loads all the 20 channels
+            trange = trange. If not set it loads up to 2.2 s of discharge
+            wGauss: boolean, Default is True.  For the application of a gaussian window to the spectrogam.
+                    If false it uses standard window for mpl.mlab.specgram
+            nfft: Number of point for the spectrogram. Default is 1024
+            ftWidth: FWHM of gaussian window [in ms]. It is used with the gaussian window. Default is 0.4 ms
+            ftStep: FT overlap (default is 2 -> ft_width / 2) This keyword is accepted for all the window
+            ftPad: FT 0 - padding (as multiple of ftWidth).  Again valid for all the accepted window
+            plt : Boolean, default is false. If true it also plot the spectrogram
+            save: Boolean, default is false. If you set to true, together with the true for plt it also save the pdf
+                  of the figure
+        Returns
+        -------
+        The spectrogram, frequency base, time base of the spectrogram
+
+        Examples
+        -------
+        [1]: from tcv.diag import xtomo
+        [2]: sp, fr, tsp = xtomo.XtomoCamera.spectrogram(50882,2,los=[9,10,11],wGauss=True,nfft=2048,plt=True)
 
 
-    def spectrogram(self,**kwargs):
-        import matplotlib as mpl
-        _s = self.fromshot()
-        _t= _s.time.values
+        """
+        # the los
+        los = kwargs.get('los',np.arange(20).astype('int')+1)
+        if type(los) != np.ndarray:
+            if np.size(los)== 1:
+                los = np.asarray([los], dtype='int')
+            else:
+                los = np.asarray(los,dtype='int')
+        # the time range
+        trange = kwargs.get('trange',[-0.01,2.2])
+        # the default values for the spectrogram
+        # default values
+        #nfft    = kwargs.get('nfft', 1024)
+        ftStep  = kwargs.get('ftStep', 2)
+        ftPad   = kwargs.get('ftPad', 5)
+        ftWidth = kwargs.get('ftWidth', 0.4)
+        # define the keyword for the application of a gaussian window
+        # default is true
+        wGauss = kwargs.get('wGauss', True)
+        # read the signals and compute the sampling frequency
+        data = Cls.fromshot(shot,camera,los=los,trange=trange)
+        _t = data.time.values
         dt = (_t.max()-_t.min())/(_t.size-1)
         Fs = np.round(1./dt)
-        NFFT= kwargs.get('NFFT',2048)
-        # do the first and check for the number of points
-        if _s.shape[0] == 1:
-            sp,fr,tsp = mpl.mlab.specgram(_s.values[0,:],Fs = Fs, NFFT = NFFT, detrend = 'linear',
-                                          scale_by_freq = True, pad_to = 3*NFFT)
-            tsp += _t.min()
+        nS = _t.size
+        # now build the appropriate gaussian window we use the same algorithm of M.Sertoli
+        # generate an array of power of 2
+        pow2 = np.power(2, np.arange(12) + 1)
+        ftWidth = pow2[np.argmin(np.abs(ftWidth * 1e-3 / dt - pow2))]
+        ftStep = ftWidth / ftStep
+        ftPad = np.round(2 ** np.round(np.log2(ftWidth * ftPad)))
+        from scipy import signal
+        sigma = ftWidth / (2 * np.sqrt(2 * np.log(2)))
+        w = scipy.signal.gaussian(ftPad, sigma)
+        if data.shape[0] == 1:
+            # with gaussian windowing
+            if wGauss == True:
+                sp,fr,tsp = mpl.mlab.specgram(data.values[0,:],Fs = Fs, NFFT = ftPad.astype('int'),
+                                              window = w, scale_by_freq = True, noverlap = ftStep.astype('int'))
+                tsp += _t.min()
+            # standard hanning windowing
+            else:
+                spc, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'), scale_by_freq = True,
+                                                 pad_to = 2 * ftPad.astype('int'), noverlap = ftStep.astype('int'))
+
         else:
-            _du,fr,tsp = mpl.mlab.specgram(_s.values[0,:], Fs = Fs, NFFT = NFFT,
-                                           detrend = 'linear', scale_by_freq = True, pad_to = 3*NFFT)
-            sp = np.zeros((_du.shape[0],_du.shape[1],self.los.size))
-            sp[:,:,0]= _du
-            tsp += _t.min()
-            for i in range(_s.shape[0]-1):
-                _du,fr,tsp = mpl.mlab.specgram(_s.values[i+1,:], Fs = Fs, NFFT = NFFT,
-                                               detrend = 'linear', scale_by_freq = True, pad_to = 3*NFFT)
-                sp[:,:,i+1] = _du
+            # gaussian windowing when we have more than one los
+            if wGauss == True:
+                _du, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'), window = w,
+                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
+                sp = np.zeros((_du.shape[0],_du.shape[1],los.size))
+                sp[:,:,0]= _du
+                tsp += _t.min()
+                for i in range(data.shape[0]-1):
+                    _du,fr,tsp = mpl.mlab.specgram(data.values[i+1,:], Fs = Fs, NFFT = ftPad.astype('int'), window = w,
+                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
+                    sp[:,:,i+1] = _du
+            else:
+                _du, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'),
+                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
+                sp = np.zeros((_du.shape[0],_du.shape[1],los.size))
+                sp[:,:,0]= _du
+                tsp += _t.min()
+                for i in range(data.shape[0]-1):
+                    _du,fr,tsp = mpl.mlab.specgram(data.values[i+1,:], Fs = Fs, NFFT = ftPad.astype('int'),
+                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
+                    sp[:,:,i+1] = _du
+
+        # now in case of true we plot the spectrogam
+        plt = kwargs.get('plt',False)
+        if plt == True:
+            if mpl.__version__ >= 1.5:
+                cmap = mpl.cm.viridis
+            else:
+                cmap = mpl.cm.Spectral
+            if np.size(los) >4:
+                fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
+                                                 nrows = np.round(los.size/4),
+                                                 ncols = 4, sharex = True, sharey = True)
+            else:
+                nrows = np.int(np.round(np.size(los)/2.))
+                fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45), nrows = 1,
+                                                  ncols = los.size, sharex = True, sharey = True)
+            if np.size(los) != 1:
+                for i in range(sp.shape[2]):
+                     axarr.flat[i].imshow(np.log10(sp[:,:,i]),aspect='auto',origin='lower',
+                                            extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),cmap=cmap)
+
+                     axarr.flat[i].set_xlabel(r't[s]')
+                     axarr.flat[i].set_ylabel(r'f [kHz]')
+                     axarr.flat[i].set_title('# '+str(shot)+' cam '+str(camera)+' ph '+str(los[i]),fontsize=10)
+                     fig.tight_layout()
+            else:
+                axarr.imshow(np.log10(sp),aspect='auto',origin='lower',
+                             extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3), cmap=cmap)
+                axarr.set_xlabel(r't[s]')
+                axarr.set_title('# '+str(shot)+' cam '+str(camera)+' ph '+
+                                str(los ),fontsize=10)
+
+            # introduce the option for saving a pdf file for the plot in the current directory
+            save = kwargs.get('save',False)
+            if save == True:
+                mpl.pylab.savefig(pwd+'/Spectrogram_'+str(shot)+'.pdf',bbox_to_inches=True)
+
         return sp,fr,tsp
-
-    def specplot(self,**kwargs):
-        NFFT = kwargs.get('NFFT',2048)
-        save = kwargs.get('save',False)
-        sp,fr,tsp = self.spectrogram(NFFT=NFFT)
-        if mpl.__version__ >= 1.5:
-            cmap = mpl.cm.viridis
-        else:
-            cmap = mpl.cm.Spectral
-
-       # now you can start the plotting as done for plo
-        if np.size(self.los) == 20:
-            fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
-                                             nrows = 4,
-                                             ncols = 5, sharex = True, sharey = True)
-        elif np.size(self.los) > 1 and np.size(self.los)<20:
-             nrows = np.int(np.round(np.size(self.los)/2.))
-             fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
-                                              nrows = nrows,
-                                              ncols = 2, sharex = True, sharey = True)
-        else:
-            fig,axarr = mpl.pyplot.subplots(figsize= (6,6),
-                                            nrows=1,ncols=1)
-        if np.size(self.los) != 1:
-           for i in range(sp.shape[2]):
-                 axarr.flat[i].imshow(np.log10(sp[:,:,i]),aspect='auto',origin='lower',
-                                        extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),cmap=cmap)
-
-                 axarr.flat[i].set_xlabel(r't[s]')
-                 axarr.flat[i].set_ylabel(r'f [kHz]')
-                 axarr.flat[i].set_title('# '+str(self.shot)+' cam '+str(self.camera)+' ph '+str(self.los[i] + 1),fontsize=10)
-                 fig.tight_layout()
-        else:
-            axarr.imshow(np.log10(sp),aspect='auto',origin='lower',
-                                        extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),
-                         cmap=cmap)
-            axarr.set_xlabel(r't[s]')
-            axarr.set_title('# '+str(self.shot)+' cam '+str(self.camera)+' ph '+
-                str(self.los + 1),fontsize=10)
-
-        # introduce the option for saving a pdf file for the plot in the current directory
-        if save == True:
-            _dir = pwd
-            mpl.pylab.savefig(pwd+'/Spectrogram_'+str(self.shot)+'.pdf',bbox_to_inches=True)
-
-
-
-
-
 
