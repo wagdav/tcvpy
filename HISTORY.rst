@@ -13,3 +13,8 @@ History
 
 * Add the XTOMO diagnostic
 * Add the ECE diagnostic
+
+0.1.2 (2015-12-03)
+------------------
+
+* Add the DMPX diagnostic
