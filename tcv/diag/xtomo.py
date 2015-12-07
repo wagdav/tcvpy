@@ -4,65 +4,52 @@ XTOMO diagnostics data
 Written by Nicola Vianello
 """
 
+import os
+
 import numpy as np
 import scipy.io
-import xray # this is needed as tdi save into an xray
-import tcv  # this is the tcv main library component
-import os   # for correctly handling the directory position
+import xray
+
+import tcv
 
 
 class XtomoCamera(object):
-
     """
-    Python class for Loading a single XtomoCamera with appropriate LoS chosen
-    eventually diagnostic analysis. All the methods are defined as classmethod so
-    they can be called without instances
-    Method:
-        'fromshot' = just read the calibrated data eventually in the interval chosen
-        'channels' = Return the names of the chosen channels as found in the MDSplus tree
-        'gain' = save the gain of the channels
-        'geo' = provide a TCV_polview with the chosen LoS plot
+    Load single XtomoCamera with appropriate LoS chosen eventually diagnostic
+    analysis. All the methods are defined as staticmethods so they can be
+    called without instances
     """
-
-    def __init__(self, data):
-        # this is the only self defined in init
-        self.shot = data.attrs['shot']
-        # given that you now open the corresponding tree through a connection
-        self.camera = data.attrs['camera']
-        self.los = data.los.values  # the plus 1 is coincident with the fact that
-        # now to we need a -1 to ensure that the nDiods are correctly the
-        # indices
-        self.trange = [data.time.values.min(), data.time.values.max()]
 
     @staticmethod
-    def fromshot(shot, camera, **kwargs):
+    def fromshot(shot, camera, los=None):
         """
-        Return the calibrated signal of the XtomoCamera LoS chosen. It is build as a `classmethod` so
-        can be called without instance
+        Return the calibrated signal of the XtomoCamera LoS chosen.
+
         Parameters
         ----------
-        Input:
-            shot   = shot number
-            camera = number of camera
-        kwargs:
-            los    = Optional argument with LoS of the chosen camera. If not set it loads all the 20 channels
-            trange = trange. If not set it loads up to 2.2 s of discharge
+        shot : int or MDSConnection
+            Shot number or connection instance
+        camera : int
+            Number of the XTOMO camera
+        los : int or sequence of ints
+            Optional argument with lines of sight (LoS) of the chosen camera.
+            If None, it loads all the 20 channels
 
         Returns
         -------
-            calibrated signals as an xray data structure
+        Calibrated signals XTOMO signals.
 
         Examples
-        ----------
-        In [1]: import tcv
-        In [2]: cm= tcv.diag.XtomoCamera.fromshot(shot,camera,los=los)
-
+        --------
+        >>> import tcv
+        >>> cam = tcv.diag.XtomoCamera.fromshot(50766, camera=1, los=[4, 5])
         """
-        # define the appropriate default values
-        los = kwargs.get('los', np.arange(20) + 1)
-        los = np.atleast_1d(los)
-        trange = kwargs.get('trange', [-0.01, 2.2])
-        # first of all define the proper los
+
+        if los:
+            los = np.atleast_1d(los)
+        else:
+            los = np.arange(20) + 1
+
         _Names = XtomoCamera.channels(shot, camera, los=los)
         _g, _a = XtomoCamera.gains(shot, camera, los=los)
 
@@ -73,16 +60,14 @@ class XtomoCamera(object):
         data = xray.concat(values, dim='los')
         data['los'] = los
 
-        # we remove the offset before the shot
+        # Remove the offset before the shot
         data -= data.where(data.time < 0).mean(dim='time')
-        # we limit to the chosen time interval
-        data = data[:, ((data.time > trange[0]) & (data.time <= trange[1]))]
+
         # and now we normalize conveniently
         # FIXME: use xray's infrastructure to compute this
         data *= np.transpose(np.tile(_a, (data.values.shape[1], 1)) / np.tile(_g, (data.values.shape[1], 1)))
-        # we add also to the attributes the number of the camera
+
         data.attrs.update({'camera': camera})
-        # now we need the appropriate gains to provide the calibrated signal
 
         return data
 
