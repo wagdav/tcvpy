@@ -1,12 +1,11 @@
-__author__  = 'Nicola Vianello'
-__version__ = '0.1'
-__date__    = '01.12.2015'
+"""
+XTOMO diagnostics data
 
+Written by Nicola Vianello
+"""
 
 import numpy as np
 import scipy
-from scipy import io # this is needed to load the settings of xtomo
-import matplotlib as mpl # this is need to get the appropriate gca
 import xray # this is needed as tdi save into an xray
 import tcv  # this is the tcv main library component
 import os   # for correctly handling the directory position
@@ -52,8 +51,7 @@ class XtomoCamera(object):
         kwargs:
             los    = Optional argument with LoS of the chosen camera. If not set it loads all the 20 channels
             trange = trange. If not set it loads up to 2.2 s of discharge
-            plt    = Boolean. Default is False. If True it also plot the results
-            save   = Boolean. If true together with plt it save the pdf of the plot
+
         Returns
         -------
             calibrated signals as an xray data structure
@@ -90,32 +88,8 @@ class XtomoCamera(object):
         # we add also to the attributes the number of the camera
         data.attrs.update({'camera':camera})
         # now we need the appropriate gains to provide the calibrated signal
-        plt = kwargs.get('plt',False)
-        if plt == True:
-            if np.size(los) > 4:
-                fig, axarr = mpl.pyplot.subplots(figsize=(15.7, 9.45),
-                                                 nrows= np.round(los.size/4),
-                                                 ncols=4, sharex=True)
-            else:
-                fig, axarr = mpl.pyplot.subplots(figsize=(15.7, 5.45),
-                                                 nrows=1,
-                                                 ncols=los.size, sharex=True)
-            if np.size(los) != 1:
-                for i in range(data.shape[0]):
-                    axarr.flat[i].plot(data.time, data.values[i, :])
-                    axarr.flat[i].set_xlabel(r't[s]')
-                    axarr.flat[i].set_title('# ' + str(shot) + ' cam ' + str(camera) + ' ph ' + str(los[i]), fontsize=10)
-                    fig.tight_layout()
-            else:
-                axarr.plot(data.time, data.values[0, :])
-                axarr.set_xlabel(r't[s]')
-                axarr.set_title('# ' + str(shot) + ' cam ' + str(camera) + ' ph ' +
-                            str(los + 1), fontsize=10)
-            mpl.pylab.show()
-            save = kwargs.get('save',False)
-            if save == True:
-                mpl.pylab.savefig(pwd+'/Signal_'+str(shot)+'.pdf',bbox_to_inches=True)
-        return (data)
+
+        return data
 
     @classmethod
     def channels(Cls, shot, camera, **kwargs):
@@ -252,13 +226,10 @@ class XtomoCamera(object):
             camera: the camera
         kwargs:
             los = the line of sight
-            plt = Boolean, default is False. If True it plot a poloidal cut with the LoS chosen
         Returns
         -------
             the x,y coordinates of the LoS for the chosen camera
         """
-        plt = kwargs.get('plt', True)
-        t0 = kwargs.get('t0', 0.6) # t0 or middle point
         # loading the Diods
         los = kwargs.get('los',np.arange(20).astype('int')+1)
         if type(los) != np.ndarray:
@@ -279,192 +250,4 @@ class XtomoCamera(object):
         xchord = catDefault['xchord'][: , (camera - 1) * 20 + index] / 100.
         ychord = catDefault['ychord'][: , (camera - 1) * 20 + index] / 100.
 
-        if plt == True:
-            tcv.tcvview(shot,t0)
-            ax=mpl.pylab.gca()
-            ax.plot(xchord,ychord,'k--')
-            for l in range(los.size):
-                ax.text(xchord[1,l]-0.03,ychord[1,l]-0.03,str(index[l]+1),color='green')
-        return (xchord,ychord)
-
-    @classmethod
-    def spectrogram(Cls, shot, camera, nfft=1024, ftStep=2,
-                    ftPad=5, ftWidth=0.4, wGauss=True, **kwargs):
-        """
-        It compute the spectrogam for the chosen signals in the chosen camera.
-
-        Parameters
-        ----------
-        Input:
-            shot   = shot number
-            camera = number of camera
-        kwargs:
-            los    = Optional argument with LoS of the chosen camera. If not set it loads all the 20 channels
-            trange = trange. If not set it loads up to 2.2 s of discharge
-            wGauss: boolean, Default is True.  For the application of a gaussian window to the spectrogam.
-                    If false it uses standard window for mpl.mlab.specgram
-            nfft: Number of point for the spectrogram. Default is 1024
-            ftWidth: FWHM of gaussian window [in ms]. It is used with the gaussian window. Default is 0.4 ms
-            ftStep: FT overlap (default is 2 -> ft_width / 2) This keyword is accepted for all the window
-            ftPad: FT 0 - padding (as multiple of ftWidth).  Again valid for all the accepted window
-            plt : Boolean, default is false. If true it also plot the spectrogram
-            save: Boolean, default is false. If you set to true, together with the true for plt it also save the pdf
-                  of the figure
-        Returns
-        -------
-        The spectrogram, frequency base, time base of the spectrogram
-
-        Examples
-        -------
-        [1]: from tcv.diag import xtomo
-        [2]: sp, fr, tsp = xtomo.XtomoCamera.spectrogram(50882,2,los=[9,10,11],wGauss=True,nfft=2048,plt=True)
-
-
-        """
-        # the los
-        los = kwargs.get('los',np.arange(20).astype('int')+1)
-        if type(los) != np.ndarray:
-            if np.size(los)== 1:
-                los = np.asarray([los], dtype='int')
-            else:
-                los = np.asarray(los,dtype='int')
-        # the time range
-        trange = kwargs.get('trange',[-0.01,2.2])
-        # the default values for the spectrogram
-        # default values
-        #nfft    = kwargs.get('nfft', 1024)
-        ftStep  = kwargs.get('ftStep', 2)
-        ftPad   = kwargs.get('ftPad', 5)
-        ftWidth = kwargs.get('ftWidth', 0.4)
-        # define the keyword for the application of a gaussian window
-        # default is true
-        wGauss = kwargs.get('wGauss', True)
-        # read the signals and compute the sampling frequency
-        data = Cls.fromshot(shot,camera,los=los,trange=trange)
-        _t = data.time.values
-        dt = (_t.max()-_t.min())/(_t.size-1)
-        Fs = np.round(1./dt)
-        nS = _t.size
-        # now build the appropriate gaussian window we use the same algorithm of M.Sertoli
-        # generate an array of power of 2
-        pow2 = np.power(2, np.arange(12) + 1)
-        ftWidth = pow2[np.argmin(np.abs(ftWidth * 1e-3 / dt - pow2))]
-        ftStep = ftWidth / ftStep
-        ftPad = np.round(2 ** np.round(np.log2(ftWidth * ftPad)))
-        from scipy import signal
-        sigma = ftWidth / (2 * np.sqrt(2 * np.log(2)))
-        w = scipy.signal.gaussian(ftPad, sigma)
-        if data.shape[0] == 1:
-            # with gaussian windowing
-            if wGauss == True:
-                sp,fr,tsp = mpl.mlab.specgram(data.values[0,:],Fs = Fs, NFFT = ftPad.astype('int'),
-                                              window = w, scale_by_freq = True, noverlap = ftStep.astype('int'))
-                tsp += _t.min()
-            # standard hanning windowing
-            else:
-                spc, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'), scale_by_freq = True,
-                                                 pad_to = 2 * ftPad.astype('int'), noverlap = ftStep.astype('int'))
-
-        else:
-            # gaussian windowing when we have more than one los
-            if wGauss == True:
-                _du, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'), window = w,
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                sp = np.zeros((_du.shape[0],_du.shape[1],los.size))
-                sp[:,:,0]= _du
-                tsp += _t.min()
-                for i in range(data.shape[0]-1):
-                    _du,fr,tsp = mpl.mlab.specgram(data.values[i+1,:], Fs = Fs, NFFT = ftPad.astype('int'), window = w,
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                    sp[:,:,i+1] = _du
-            else:
-                _du, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'),
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                sp = np.zeros((_du.shape[0],_du.shape[1],los.size))
-                sp[:,:,0]= _du
-                tsp += _t.min()
-                for i in range(data.shape[0]-1):
-                    _du,fr,tsp = mpl.mlab.specgram(data.values[i+1,:], Fs = Fs, NFFT = ftPad.astype('int'),
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                    sp[:,:,i+1] = _du
-
-        # now in case of true we plot the spectrogam
-        plt = kwargs.get('plt',False)
-        if plt == True:
-            if mpl.__version__ >= 1.5:
-                cmap = mpl.cm.viridis
-            else:
-                cmap = mpl.cm.Spectral
-            if np.size(los) >4:
-                fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
-                                                 nrows = np.round(los.size/4),
-                                                 ncols = 4, sharex = True, sharey = True)
-            else:
-                nrows = np.int(np.round(np.size(los)/2.))
-                fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45), nrows = 1,
-                                                  ncols = los.size, sharex = True, sharey = True)
-            if np.size(los) != 1:
-                for i in range(sp.shape[2]):
-                     axarr.flat[i].imshow(np.log10(sp[:,:,i]),aspect='auto',origin='lower',
-                                            extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),cmap=cmap)
-
-                     axarr.flat[i].set_xlabel(r't[s]')
-                     axarr.flat[i].set_ylabel(r'f [kHz]')
-                     axarr.flat[i].set_title('# '+str(shot)+' cam '+str(camera)+' ph '+str(los[i]),fontsize=10)
-                     fig.tight_layout()
-            else:
-                axarr.imshow(np.log10(sp),aspect='auto',origin='lower',
-                             extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3), cmap=cmap)
-                axarr.set_xlabel(r't[s]')
-                axarr.set_title('# '+str(shot)+' cam '+str(camera)+' ph '+
-                                str(los ),fontsize=10)
-
-            # introduce the option for saving a pdf file for the plot in the current directory
-            save = kwargs.get('save',False)
-            if save == True:
-                mpl.pylab.savefig(pwd+'/Spectrogram_'+str(shot)+'.pdf',bbox_to_inches=True)
-
-        return sp,fr,tsp
-
-
-
-
-# now we want to define a function which use the class to plot all the gains
-
-def plotGains(shot):
-
-    import matplotlib as mpl
-    import numpy as np
-
-    # raw input for the number of shot
-    # we should open the tree otherwise a simple call of camera.gain does not work
-    _gainTot = np.zeros((20, 10))
-    for i in range(10):
-        _g, _a = XtomoCamera.gains(shot,i+1)
-        _gainTot[:, i] = _g
-
-    # now start to cycle. A bit boring but it works
-    fig = mpl.pylab.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111)
-    for i in range(10):
-        for j in range(20):
-            if _gainTot[j, i] == 1:
-                cl = 'black'
-            elif _gainTot[j, i] == 10:
-                cl = '#994d00'
-            elif _gainTot[j, i] == 100:
-                cl = 'red'
-            else:
-                cl = '#ffbf00'
-            ax.plot([i + 1], [j + 1], 's', color = cl, markersize = 16)
-            ax.plot([i + 0.75, i + 1.25], [j + 0.5, j + 0.5], 'k-')
-            ax.plot([i + 0.75, i + 1.25], [j + 1.5, j + 1.5], 'k-')
-    ax.set_yticks(np.arange(20) + 1)
-    ax.set_xticks(np.arange(10) + 1)
-    ax.set_xlim([0, 11])
-    ax.set_ylim([0, 22])
-    ax.set_xlabel('camera')
-    ax.set_ylabel('diods')
-    ax.set_title('Shot # ' + str(shot))
-
-
+        return xchord, ychord
