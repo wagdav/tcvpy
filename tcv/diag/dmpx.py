@@ -370,176 +370,21 @@ class Top(object):
         ----------
         Input:
             shot: shot number
-        kwargs
-            los : Line of Sight of interest. If not given it consider all of them
-            plt : Boolean, default is False. If True it provide a poloidal view with the chords
-            t0 : time instant for the equilibrium plot.
+
         Returns
         -------
             The radial and vertical coordinates of the LoS
+
         Examples
         -------
         In [1]: from tcv.diag.dmpx import Top
-        In [2]: x, y = Top.geo(50766,los=9,t0=6)
+        In [2]: x, y = Top.geo(50766)
         """
 
-        los = kwargs.get('los', np.arange(64).astype('int')+1)
-        if type(los) != np.ndarray:
-            if np.size(los)== 1:
-                los = np.asarray([los], dtype='int')
-            else:
-                los = np.asarray(los,dtype='int')
+        indices = np.arange(64)
 
-        plt = kwargs.get('plt', False)
-        t0 = kwargs.get('t0',0.6)
-        # these are the coordinates saved in a mat files
         _geoF = io.loadmat(diag_path + '/dmpx_los.mat')
-        xc = _geoF['xchordt'][: , los-1]
-        yc = _geoF['ychordt'][: , los-1]
-
-        if plt == True:
-            # and now add the LOS of the DMPX
-            mpl.pylab.show()
-            tcv.tcvview(shot,t0)
-            ax=mpl.pylab.gca()
-            ax.plot(xc, yc, '--', color = '#ff6600', linewidth = 1.5)
-            for l in range(los.size):
-                ax.text(xc[1,l]-0.03,yc[1,l]-0.03,str(los[l]),color='green')
+        xc = _geoF['xchordt'][:, indices]
+        yc = _geoF['ychordt'][:, indices]
 
         return xc, yc
-
-    @classmethod
-    def spectrogram(Cls, shot, nfft=1024, ftStep=2,
-                    ftPad=5, ftWidth=0.4, wGauss=True, **kwargs):
-
-        """
-        It compute the spectrogam for the chosen signals in the chosen camera.
-
-        Parameters
-        ----------
-        Input:
-            shot   : shot number
-        kwargs:
-            los    : Optional argument with LoS of the chosen camera. If not set it loads all the 20 channels
-            trange : trange. If not set it loads up to 2.2 s of discharge
-            wGauss : boolean, Default is True.  For the application of a gaussian window to the spectrogam.
-                    If false it uses standard window for mpl.mlab.specgram
-            nfft: Number of point for the spectrogram. Default is 1024
-            ftWidth: FWHM of gaussian window [in ms]. It is used with the gaussian window. Default is 0.4 ms
-            ftStep: FT overlap (default is 2 -> ft_width / 2) This keyword is accepted for all the window
-            ftPad: FT 0 - padding (as multiple of ftWidth).  Again valid for all the accepted window
-            plt : Boolean, default is false. If true it also plot the spectrogram
-            save: Boolean, default is false. If you set to true, together with the true for plt it also save the pdf
-                  of the figure
-        Returns
-        -------
-        The spectrogram, frequency base, time base of the spectrogram
-
-        Examples
-        -------
-        [1]: from tcv.diag.dmpx import Top
-        [2]: sp, fr, tsp = Top.spectrogram(50882,2,los=[9,10,11],wGauss=True,nfft=2048,plt=True)
-
-        """
-
-        los = kwargs.get('los', np.arange(64).astype('int')+1)
-        if type(los) != np.ndarray:
-            if np.size(los)== 1:
-                los = np.asarray([los], dtype='int')
-            else:
-                los = np.asarray(los,dtype='int')
-        # the time range
-        trange = kwargs.get('trange',[-0.01,2.2])
-        # the default values for the spectrogram
-        # default values
-        ftStep  = kwargs.get('ftStep', 2)
-        ftPad   = kwargs.get('ftPad', 5)
-        ftWidth = kwargs.get('ftWidth', 0.4)
-        # define the keyword for the application of a gaussian window
-        # default is true
-        wGauss = kwargs.get('wGauss', True)
-        # read the signals and compute the sampling frequency
-        data = Cls.fromshot(shot,los=los,trange=trange)
-        _t = data.time.values
-        dt = (_t.max()-_t.min())/(_t.size-1)
-        Fs = np.round(1./dt)
-
-        # now build the appropriate gaussian window we use the same algorithm of M.Sertoli
-        # generate an array of power of 2
-        pow2 = np.power(2, np.arange(12) + 1)
-        ftWidth = pow2[np.argmin(np.abs(ftWidth * 1e-3 / dt - pow2))]
-        ftStep = ftWidth / ftStep
-        ftPad = np.round(2 ** np.round(np.log2(ftWidth * ftPad)))
-        sigma = ftWidth / (2 * np.sqrt(2 * np.log(2)))
-        w = signal.gaussian(ftPad, sigma)
-        if data.shape[0] == 1:
-            # with gaussian windowing
-            if wGauss == True:
-                sp,fr,tsp = mpl.mlab.specgram(data.values[0,:],Fs = Fs, NFFT = ftPad.astype('int'),
-                                              window = w, scale_by_freq = True, noverlap = ftStep.astype('int'))
-                tsp += _t.min()
-            # standard hanning windowing
-            else:
-                spc, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'), scale_by_freq = True,
-                                                 pad_to = 2 * ftPad.astype('int'), noverlap = ftStep.astype('int'))
-
-        else:
-            # gaussian windowing when we have more than one los
-            if wGauss == True:
-                _du, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'), window = w,
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                sp = np.zeros((_du.shape[0],_du.shape[1],los.size))
-                sp[:,:,0]= _du
-                tsp += _t.min()
-                for i in range(data.shape[0]-1):
-                    _du,fr,tsp = mpl.mlab.specgram(data.values[i+1,:], Fs = Fs, NFFT = ftPad.astype('int'), window = w,
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                    sp[:,:,i+1] = _du
-            else:
-                _du, fr, tsp = mpl.mlab.specgram(data.values[0,:], Fs = Fs, NFFT = ftPad.astype('int'),
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                sp = np.zeros((_du.shape[0],_du.shape[1],los.size))
-                sp[:,:,0]= _du
-                tsp += _t.min()
-                for i in range(data.shape[0]-1):
-                    _du,fr,tsp = mpl.mlab.specgram(data.values[i+1,:], Fs = Fs, NFFT = ftPad.astype('int'),
-                                                     scale_by_freq = True,  noverlap = ftStep.astype('int'))
-                    sp[:,:,i+1] = _du
-
-        # now in case of true we plot the spectrogam
-        plt = kwargs.get('plt',False)
-        if plt == True:
-            if mpl.__version__ >= 1.5:
-                cmap = mpl.cm.viridis
-            else:
-                cmap = mpl.cm.Spectral
-            if np.size(los) >4:
-                fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45),
-                                                 nrows = np.round(los.size/4),
-                                                 ncols = 4, sharex = True, sharey = True)
-            else:
-                nrows = np.int(np.round(np.size(los)/2.))
-                fig, axarr = mpl.pyplot.subplots(figsize = (15.7,9.45), nrows = 1,
-                                                  ncols = los.size, sharex = True, sharey = True)
-            if np.size(los) != 1:
-                for i in range(sp.shape[2]):
-                     axarr.flat[i].imshow(np.log10(sp[:,:,i]),aspect='auto',origin='lower',
-                                            extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3),cmap=cmap)
-
-                     axarr.flat[i].set_xlabel(r't[s]')
-                     axarr.flat[i].set_ylabel(r'f [kHz]')
-                     axarr.flat[i].set_title('# '+str(shot)+' DMPX LoS '+str(los[i]),fontsize=10)
-                     fig.tight_layout()
-            else:
-                axarr.imshow(np.log10(sp),aspect='auto',origin='lower',
-                             extent=(tsp.min(),tsp.max(),fr.min()/1e3,fr.max()/1e3), cmap=cmap)
-                axarr.set_xlabel(r't[s]')
-                axarr.set_title('# '+str(shot)+' DMPX LoS '+
-                                str(los),fontsize=10)
-
-            # introduce the option for saving a pdf file for the plot in the current directory
-            save = kwargs.get('save',False)
-            if save == True:
-                mpl.pylab.savefig(pwd+'/SpectrogramDmpx_'+str(shot)+'.pdf',bbox_to_inches=True)
-
-        return sp,fr,tsp
