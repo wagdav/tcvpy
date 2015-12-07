@@ -1,37 +1,36 @@
 # -*- coding: utf-8 -*-
-__author__  = 'Nicola Vianello'
-__version__ = '0.1'
-__date__    = '03.12.2015'
+"""
+XTOMO diagnostics data
 
+Written by Nicola Vianello
+"""
 
-
+import os  # for correctly handling the directory position
+from scipy import io  # this is needed to load the settings of xtomo
 import numpy as np
-from scipy import signal # this is needed for the computation of the spectrogam
-from scipy import io # this is needed to load the settings of xtomo
-import matplotlib as mpl # this is need to get the appropriate gca
-import xray # this is needed as tdi save into an xray
+
 import tcv  # this is the tcv main library component
-import os   # for correctly handling the directory position
-from itertools import izip
-# for definition of the
+import xray  # this is needed as tdi save into an xray
+
 diag_path = os.path.dirname(os.path.realpath(__file__))
 diag_path += '/dmpxcalib'
+
 
 class Top(object):
     """
     Class to load and analyze the data contained in the top chamber of DMPX.
     All the methods described as classmethod and so they can be called directly
     Methods:
-        read: Read the data calibrated in the same way as mpxdata matlab routine.
-              It can read also single chords, accordingly to the call to Top
+        read: Read the data calibrated in the same way as mpxdata matlab
+              routine.  It can read also single chords, accordingly to the call
+              to Top
         gains: Return the gains used for the calibration of the chors
         geo : return the geometrical position of the chords
         spectrogram: It create and eventually plot the spectrograms(s)
-
     """
 
-    @classmethod
-    def channels(Cls, shot, **kwargs):
+    @staticmethod
+    def channels(shot, **kwargs):
         """
 
         Parameters
@@ -40,60 +39,59 @@ class Top(object):
             shot: Shot number
         kwargs
             los: Eventually the los we would like to look at
+
         Returns
         -------
-            the string array containing the channels, already sorted out according to shot number
+            the string array containing the channels, already sorted out
+            according to shot number
         """
-        los = kwargs.get('los', np.arange(64).astype('int')+1)
-        if type(los) != np.ndarray:
-            if np.size(los)== 1:
-                los = np.asarray([los], dtype='int')
-            else:
-                los = np.asarray(los,dtype='int')
-        indexLos = los-1 # we convert from LoS to index
+        los = kwargs.get('los', np.arange(64) + 1)
+        los = np.atleast_1d(los)
 
         # we provide here all the definition we need
-        if shot < 24087  or shot > 24725:
-            dtNe1 =r'\atlas::dt100_northeast_001:'
-            dtNe2 =r'\atlas::dt100_northeast_002:'
+        if shot < 24087 or shot > 24725:
+            dtNe1 = r'\atlas::dt100_northeast_001:'
+            dtNe2 = r'\atlas::dt100_northeast_002:'
         else:
-            dtNe1 =r'\atlas::dt100_southwest_001:'
-            dtNe2 =r'\atlas::dt100_southwest_002:'
+            dtNe1 = r'\atlas::dt100_southwest_001:'
+            dtNe2 = r'\atlas::dt100_southwest_002:'
 
         # we define the table corresponding to correct cabling of the signals
         # cabling for the shots > 26555
         if shot >= 26555:
-            cd2Cords = np.arange(1,65,2)
-            cd2Chans = np.arange(1,33,1)
-            cd1Cords = np.arange(2,66,2)
-            cd1Chans = np.append(np.arange(16,0,-1),np.arange(32,16,-1))
-        elif shot>20643 and shot< 26555:
-            cd2Cords = np.arange(1,65,2)
-            cd2Chans = np.arange(1,33,1)
-            cd1Cords = np.arange(2,66,2)
-            cd1Chans = np.arange(32,0,-1)
+            cd2Cords = np.arange(1, 65, 2)
+            cd2Chans = np.arange(1, 33, 1)
+            cd1Cords = np.arange(2, 66, 2)
+            cd1Chans = np.append(np.arange(16, 0, -1), np.arange(32, 16, -1))
+        elif shot > 20643 and shot < 26555:
+            cd2Cords = np.arange(1, 65, 2)
+            cd2Chans = np.arange(1, 33, 1)
+            cd1Cords = np.arange(2, 66, 2)
+            cd1Chans = np.arange(32, 0, -1)
         else:
             raise Exception('This programs does not load shots before 20643')
 
         # now we define the appropriate board according to the shot number
         # and the presence of fast signals
-        cd2Cards = np.repeat(dtNe2,cd2Cords.size)
-        cd1Cards = np.repeat(dtNe1,cd1Cords.size)
+        cd2Cards = np.repeat(dtNe2, cd2Cords.size)
+        cd1Cards = np.repeat(dtNe1, cd1Cords.size)
         # now we collect all together the signals and sort from HFS to LFS
-        allCords = np.append(cd1Cords,cd2Cords)
-        allChans = np.append(cd1Chans,cd2Chans)
-        allCards = np.append(cd1Cards,cd2Cards)
+        allCords = np.append(cd1Cords, cd2Cords)
+        allChans = np.append(cd1Chans, cd2Chans)
+        allCards = np.append(cd1Cards, cd2Cards)
         # sort the index from HFS to LFS
         allChans = allChans[np.argsort(allCords)]
         allCards = allCards[np.argsort(allCords)]
+
         # now select the chosen diods
+        indexLos = los - 1  # we convert from LoS to index
         _chosenChans = allChans[indexLos]
         _chosenCards = allCards[indexLos]
 
-        return _chosenCards,_chosenChans
+        return _chosenCards, _chosenChans
 
-    @classmethod
-    def fromshot(Cls, shot, **kwargs):
+    @staticmethod
+    def fromshot(shot, **kwargs):
         """
 
         Parameters
@@ -107,55 +105,54 @@ class Top(object):
 
         Returns
         -------
-        An xray.DataArray containing the data, time basis and all the information in dictionary
+        An xray.DataArray containing the data, time basis and all the
+        information in dictionary
 
         Examples
-        -------
+        ---------
         In [1]: from tcv.diag.dmpx import Top
-        In [2]: data = Top.fromshot(50730,los=32)
+        In [2]: data = Top.fromshot(50730, los=32)
         """
         # define the defauls LoS if not given
-        los = kwargs.get('los', np.arange(64).astype('int')+1)
-        if type(los) != np.ndarray:
-            if np.size(los)== 1:
-                los = np.asarray([los], dtype='int')
-            else:
-                los = np.asarray(los,dtype='int')
-        # define the default trange if not given
-        trange = kwargs.get('trange',[-0.01,2.2])
-        # first of all choose the right channels and cards
-        _chosenCards, _chosenChans = Cls.channels(shot,los=los)
+        los = kwargs.get('los', np.arange(64) + 1)
+        los = np.atleast_1d(los)
 
-        # we need to repeat this because we do not know apriori which are the dtNe1 and
-        # dtNe2
-        if shot < 24087  or shot > 24725:
-            dtNe1 =r'\atlas::dt100_northeast_001:'
-            dtNe2 =r'\atlas::dt100_northeast_002:'
+        # define the default trange if not given
+        trange = kwargs.get('trange', [-0.01, 2.2])
+        # first of all choose the right channels and cards
+        _chosenCards, _chosenChans = Top.channels(shot, los=los)
+
+        # we need to repeat this because we do not know apriori which are the
+        # dtNe1 and dtNe2
+        if shot < 24087 or shot > 24725:
+            dtNe1 = r'\atlas::dt100_northeast_001:'
+            dtNe2 = r'\atlas::dt100_northeast_002:'
         else:
-            dtNe1 =r'\atlas::dt100_southwest_001:'
-            dtNe2 =r'\atlas::dt100_southwest_002:'
+            dtNe1 = r'\atlas::dt100_southwest_001:'
+            dtNe2 = r'\atlas::dt100_southwest_002:'
 
         # now define the appropriate channels
         # test the dtacq triggering mode
         conn = tcv.shot(shot)
-        mode1 = conn.tdi(dtNe1+'MODE').values
-        mode2 = conn.tdi(dtNe2+'MODE').values
+        mode1 = conn.tdi(dtNe1 + 'MODE').values
+        mode2 = conn.tdi(dtNe2 + 'MODE').values
         mode3 = 4
         # now a raise exception if wrong timing occurs
-        mOde = mode1*mode2*mode3
+        mOde = mode1 * mode2 * mode3
         if shot >= 24087 and mOde != 64:
             print('Random temporal gap (5 to 25 us) between the two or three MPX acquisition cards.')
             print('Random temporal gap (0.1 to 0.2ms) between DTACQ and TCV.')
             raise Warning('DTACQ not in mode 4')
 
         # load the time basis
-        # we check if fast nodes are collected for shot below 34988 and eventually load fast data
+        # we check if fast nodes are collected for shot below 34988 and
+        # eventually load fast data
         if shot <= 34988:
             try:
-                if _chosenChans[0]<10:
-                    _str = _chosenCards[0]+'selected:channel_00'+str(_chosenChans[0])
+                if _chosenChans[0] < 10:
+                    _str = _chosenCards[0] + 'selected:channel_00' + str(_chosenChans[0])
                 else:
-                    _str = _chosenCards[0]+'selected:channel_0'+str(_chosenChans[0])
+                    _str = _chosenCards[0] + 'selected:channel_0' + str(_chosenChans[0])
                 conn.tdi(_str)
                 fast = True
                 print('Loading high frequency for old shot')
@@ -168,190 +165,165 @@ class Top(object):
 
         values = []
         # read the raw data
-        for Cards,Chans,Cords in izip(_chosenCards, _chosenChans,los):
+        for Cards, Chans, Cords in zip(_chosenCards, _chosenChans, los):
             if Chans < 10:
-                if fast == True:
-                    values.append(conn.tdi(Cards+'selected:channel_00'+str(Chans),dims='time'))
+                if fast:
+                    values.append(conn.tdi(Cards + 'selected:channel_00' + str(Chans), dims='time'))
                 else:
-                    values.append(conn.tdi(Cards+'channel_00'+str(Chans),dims='time'))
+                    values.append(conn.tdi(Cards + 'channel_00' + str(Chans), dims='time'))
             else:
-                if fast == True:
-                    values.append(conn.tdi(Cards+'selected:channel_0'+str(Chans),dims='time'))
+                if fast:
+                    values.append(conn.tdi(Cards + 'selected:channel_0' + str(Chans), dims='time'))
                 else:
-                    values.append(conn.tdi(Cards+'channel_0'+str(Chans),dims='time'))
+                    values.append(conn.tdi(Cards+'channel_0' + str(Chans), dims='time'))
 
-            print('reading Cord '+str(Cords)+' Channel '+ str(Chans)+' on Board '+ str(Cards[ -2:-1]))
+            print('reading Cord ' + str(Cords) + ' Channel ' + str(Chans)+' on Board ' + str(Cards[-2:-1]))
 
         # now we create the xray
-        data = xray.concat(values, dim = 'los')
+        data = xray.concat(values, dim='los')
         data['los'] = los
-        #correct for bad timing
+        # correct for bad timing
         if shot > 19923 and shot < 20939:
-            data.time = (data.time +0.04)*0.9697-0.04
+            data.time = (data.time + 0.04) * 0.9697 - 0.04
         # correct for missing shots
-        if shot>=25102 and shot<25933 and los.__contains__(36):
-            data.value[np.argmin(np.abs(los-36)),:]=0
+        if shot >= 25102 and shot < 25933 and (36 in los):
+            data.value[np.argmin(np.abs(los - 36)), :] = 0
             print('Channel 36 was missing for this shot')
-        elif shot>=27127 and shot<=28124:
-            #missing channels, problem with cable 2, repaired by DF in Dec 2004
-            missing = np.asarray([3,64,62,60,58,56])
+        elif shot >= 27127 and shot <= 28124:
+            # missing channels, problem with cable 2, repaired by DF in Dec
+            # 2004
+            missing = np.asarray([3, 64, 62, 60, 58, 56])
             for fault in missing:
-                if los.__contains__(fault):
-                    data.values[np.argmin(np.abs(los-fault)),:]=0
+                if fault in los:
+                    data.values[np.argmin(np.abs(los - fault)), :] = 0
                     print('Channel '+str(fault)+' missing for this shot')
-            if shot>=27185 and los.__contains__(44): #one more channel missing !...
-                    data.values[np.argmin(np.abs(los-44)),:]=0
+            if shot >= 27185 and (44 in los):  # one more channel missing !...
+                    data.values[np.argmin(np.abs(los-44)), :] = 0
                     print('Channel 44 missing for this shot')
-        if shot>=28219 and shot<31446:
-            missing = np.asarray([19,21])
+        if shot >= 28219 and shot < 31446:
+            missing = np.asarray([19, 21])
             for fault in missing:
-                if los.__contains__(fault):
-                    data.values[np.argmin(np.abs(los-fault)),:]=0
-                    print('Channel '+str(fault)+' missing for this shot')
+                if fault in los:
+                    data.values[np.argmin(np.abs(los-fault)), :] = 0
+                    print('Channel ' + str(fault) + ' missing for this shot')
         # chose calibrate the signals
         # read the gain
-        _calib, _gains = Cls.gains(shot,los=los)
-        data.values *= (_calib / _gains).reshape(los.size,1)
+        _calib, _gains = Top.gains(shot, los=los)
+        data.values *= (_calib / _gains).reshape(los.size, 1)
 
         # limit to the correct time bases
-        data[:,((data.time> trange[0]) & (data.time <= trange[1]))]
-
-        # eventually plot the signals
-        plt = kwargs.get('plt', False)
-        if plt:
-            if np.size(los) > 4:
-                fig, axarr = mpl.pyplot.subplots(figsize=(15.7, 9.45), ncols=4,
-                                                 nrows=np.round(np.size(los) / 4), sharex=True)
-            else:
-                fig, axarr = mpl.pyplot.subplots(figsize=(15.7, 5.45), nrows=1, ncols=np.size(los),
-                                                 sharex=True)
-
-            if np.size(los) != 1:
-                for i in range(data.shape[0]):
-                    axarr.flat[i].plot(data.time.values, data.values[i,:])
-                    axarr.flat[i].set_xlabel(r't[s]')
-                    axarr.flat[i].set_title('# ' + str(shot) + ' DMPX Chords ' + str(los[i]),
-                                            fontsize=10)
-                fig.tight_layout()
-            else:
-                axarr.plot(data.time.values, data.values[0,:])
-                axarr.set_xlabel(r't[s]')
-                axarr.set_title('# ' + str(shot) + ' DMPX Chords ' +
-                                str(los), fontsize=10)
-            mpl.pylab.show()
-
-
+        data[:, ((data.time > trange[0]) & (data.time <= trange[1]))]
 
         return data
 
-    @classmethod
-    def gains(Cls,shot,**kwargs):
+    @staticmethod
+    def gains(shot, **kwargs):
 
         """
-        Provide the proper calibration factor for the signals so that can obtain directly the calibration used
-        call: Calibration, Gain = Top.gains()
+        Provide the proper calibration factor for the signals so that can
+        obtain directly the calibration used call:
+
+            Calibration, Gain = Top.gains()
 
         """
         los = kwargs.get('los', np.arange(64).astype('int')+1)
         if type(los) != np.ndarray:
-            if np.size(los)== 1:
+            if np.size(los) == 1:
                 los = np.asarray([los], dtype='int')
             else:
-                los = np.asarray(los,dtype='int')
-        indexLos = los-1 # we convert from LoS to index
-
+                los = np.asarray(los, dtype='int')
+        indexLos = los - 1  # we convert from LoS to index
 
         conn = tcv.shot(shot)
 
-        #After #26575, the real voltage is indicated in the Vista window, before it was the reference voltage
-        mm = 500 if shot<26765 else 1
-        voltage = conn.tdi(r'\VSYSTEM::TCV_PUBLICDB_R["ILOT:DAC_V_01"]').values*mm
+        # After #26575, the real voltage is indicated in the Vista window,
+        # before it was the reference voltage
+        mm = 500 if shot < 26765 else 1
+        voltage = conn.tdi(r'\VSYSTEM::TCV_PUBLICDB_R["ILOT:DAC_V_01"]').values * mm
         if shot == 32035:
-            voltage=2000
+            voltage = 2000
         # we first load all the calibration and then choose the correct one according to the ordering
-        gainC=np.zeros(64)
-        gainR=np.zeros(64)
+        gainC = np.zeros(64)
+        gainR = np.zeros(64)
 
-        I=np.where(shot >= np.r_[20030,23323,26555,27127,29921,30759,31446])[0][-1]
+        I = np.where(shot >= np.r_[20030, 23323, 26555, 27127, 29921, 30759, 31446])[0][-1]
         if I == 0:
             print('Detector gain dependence on the high voltage value not included in the signal calibration')
             calib = io.loadmat(diag_path+'/mpx_calib_first.mat')
-            calib_coeff_t=np.squeeze(calib['calib_coeff'])
+            calib_coeff_t = np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 1:
             print('Detector gain dependence on the high voltage value not included in the signal calibration')
             calib = io.loadmat(diag_path+'/mpx_calib_sept02.mat')
-            calib_coeff_t=np.squeeze(calib['calib_coeff'])
-            gainC[:]=1
+            calib_coeff_t = np.squeeze(calib['calib_coeff'])
+            gainC[:] = 1
         if I == 2:
             print('Detector gain dependence on the high voltage value not included in the signal calibration')
             print('There were leaks in the top detector wire chamber for 26554<shot<27128')
             print('Calibration is not very meaningful')
             calib = io.loadmat(diag_path+'/mpx_calib_may04.mat')
-            calib_coeff_t=np.np.squeeze(calib['calib_coeff'])
-            gainC[:]=1
+            calib_coeff_t = np.np.squeeze(calib['calib_coeff'])
+            gainC[:] = 1
         if I == 3:
             print('Same gain dependence on the high voltage value taken for each channel')
             calib = io.loadmat(diag_path+'/mpx_calib_july04.mat')
             calib_coeff = np.squeeze(calib['calib_coeff'])
             R = np.squeeze(calib['R'])
             calib_coeff_t = calib_coeff
-            calib = io.loadmat(diag_path+'/mpx_calib_may05.mat')
+            calib = io.loadmat(diag_path + '/mpx_calib_may05.mat')
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
-            C=np.mean(C[:,:64],1) # Use the same gain for each channel
-            gainC[:] = np.exp(np.interp(voltage,V,np.log(C)))
-            gainR[:]=R
+            C = np.mean(C[:, :64], 1)  # Use the same gain for each channel
+            gainC[:] = np.exp(np.interp(voltage, V, np.log(C)))
+            gainR[:] = R
         if I == 4:
             print('Same gain dependence on the high voltage value taken for each channel')
-            calib = io.loadmat(diag_path+'/mpx_calib_may05.mat')
+            calib = io.loadmat(diag_path + '/mpx_calib_may05.mat')
             calib_coeff = np.np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
-            calib_coeff_t=calib_coeff
-            C=np.mean(C[:,:64],1) # Use the same gain for each channel
-            gainC[:] =np.exp(np.interp(voltage, V,np.log(C)))
-            R = io.loadmat(diag_path+'/mpx_calib_july04.mat')['R'] #use the previous relative calibration
-            gainR[:]=R
+            calib_coeff_t = calib_coeff
+            C = np.mean(C[:, :64], 1)  # Use the same gain for each channel
+            gainC[:] = np.exp(np.interp(voltage, V, np.log(C)))
+            R = io.loadmat(diag_path+'/mpx_calib_july04.mat')['R']  # use the previous relative calibration
+            gainR[:] = R
         if I == 5:
-            #
-            # In this case, the different behaviour of the wires is contained in the matrix of gains.
-            # The calibration coefficients are in a vector: one value per wire, same value for all tensions.
-            #
+            # In this case, the different behaviour of the wires is contained
+            # in the matrix of gains.  The calibration coefficients are in a
+            # vector: one value per wire, same value for all tensions.
             print('Gain dependence on the high voltage value calibrated for each channel')
             print('Leaks in the bottom detector, no relative calibration of the two detectors')
             calib = io.loadmat(diag_path+'/mpx_calib_oct05.mat')
             calib_coeff = np.np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
-            calib_coeff_t=calib_coeff
+            calib_coeff_t = calib_coeff
             # Interpolation to get the proper gains wrt to the high tension value
-            gainC[:]=[np.interp(voltage, V,np.log(C[:,jj])) for jj in range(64)]
-            gainR[:]=np.NaN
+            gainC[:] = [np.interp(voltage, V, np.log(C[:, jj])) for jj in range(64)]
+            gainR[:] = np.NaN
         if I == 6:
-            #
-            # In this case, the different behaviour of the wires is contained in the matrix of calibration coefficients.
-            # The gains are in a vector: one value per tension, same value for all wires.
-            #
+            # In this case, the different behaviour of the wires is contained
+            # in the matrix of calibration coefficients.  The gains are in a
+            # vector: one value per tension, same value for all wires.
             print('Gain dependence on the high voltage value calibrated for each channel')
-            #load(sprintf('#mpx_calib_dec05_bis.mat',[mpxpath 'calibration_used/']),'calib_coeff_top','C_top_av','V_top','R')
-            calib = io.loadmat(diag_path+'/mpx_calib_dec05_bis.mat')
+            calib = io.loadmat(diag_path + '/mpx_calib_dec05_bis.mat')
             calib_coeff_top = np.squeeze(calib['calib_coeff_top'])
             C_top_av = np.squeeze(calib['C_top_av'])
             V_top = np.squeeze(calib['V_top'])
             R = np.squeeze(calib['R'])
             calib_coeff_t = []
-            for jj in range(64): # Interpolation to get the proper calibration coefficient wrt the high tension value
-                calib_coeff_t.append(np.interp(voltage, V_top,calib_coeff_top[:,jj]))
-            gainC[:]=np.exp(np.interp(voltage, V_top,np.log(C_top_av)))
-            gainR =R
+            for jj in range(64):  # Interpolation to get the proper calibration coefficient wrt the high tension value
+                calib_coeff_t.append(
+                    np.interp(voltage, V_top, calib_coeff_top[:, jj]))
+            gainC[:] = np.exp(np.interp(voltage, V_top, np.log(C_top_av)))
+            gainR = R
         # now we can order accordingly to the index for shot > 26555
         # the ordering of the calibration is awful
 
-        II=np.zeros(64,dtype=int)
+        II = np.zeros(64, dtype=int)
         if shot >= 26555:
             II[0:63:2] = np.r_[32:64]
-            II[1:64:2]=np.r_[15:-1:-1,31:15:-1]
+            II[1:64:2] = np.r_[15:-1:-1, 31:15:-1]
             calib_coeff_t = np.asarray(calib_coeff_t)[II]
             gainC = gainC[II]
         # limit the output to the chosen diods
@@ -360,10 +332,8 @@ class Top(object):
 
         return cOut, gOut
 
-
-
-    @classmethod
-    def geo(Cls, shot, **kwargs):
+    @staticmethod
+    def geo(shot):
         """
 
         Parameters
