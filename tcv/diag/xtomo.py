@@ -145,23 +145,19 @@ class XtomoCamera(object):
                 180 + [2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15,
                        18, 17, 20, 19]])
         else:
-            aZ = np.arange(1, 21, 1)
-            bZ = np.arange(40, 20, -1)
-            cZ = np.arange(60, 40, -1)
-            dZ = np.arange(61, 101, 1)
-            eZ = np.arange(120, 100, -1)
-            fZ = np.arange(140, 120, -1)
-            gZ = np.arange(141, 161, 1)
-            hZ = np.arange(180, 160, -1)
-            iZ = np.arange(200, 180, -1)
+            index = np.hstack([
+                np.arange(1, 21, 1),
+                np.arange(40, 20, -1),
+                np.arange(60, 40, -1),
+                np.arange(61, 101, 1),
+                np.arange(120, 100, -1),
+                np.arange(140, 120, -1),
+                np.arange(141, 161, 1),
+                np.arange(180, 160, -1),
+                np.arange(200, 180, -1),
+            ])
 
-            # FIXME: what's happening here?
-            index=np.append(aZ,np.append(bZ,np.append(cZ,np.append(dZ,
-                                                                   np.append(eZ, np.append(fZ,
-                                                                                          np.append(gZ,
-                                                                                                    np.append(hZ,iZ))))))))
         index -= 1  # remember that matlab start from 1
-
         mask = (camera - 1) * 20 + np.arange(0, 20, 1)
         ia = np.argsort(index[np.arange(index.shape[0])[np.in1d(index, mask)]])
         gAins = gAins[ia]
