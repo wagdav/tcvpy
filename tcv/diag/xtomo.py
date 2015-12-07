@@ -9,8 +9,11 @@ import scipy
 import xray # this is needed as tdi save into an xray
 import tcv  # this is the tcv main library component
 import os   # for correctly handling the directory position
+
 # to get the proper directory of the location of the package
 _package_folder = os.path.dirname(os.path.realpath(__file__))
+
+
 class XtomoCamera(object):
 
     """
@@ -22,24 +25,20 @@ class XtomoCamera(object):
         'channels' = Return the names of the chosen channels as found in the MDSplus tree
         'gain' = save the gain of the channels
         'geo' = provide a TCV_polview with the chosen LoS plot
-        'spectrogram' = compute the spectrogram of all the Diods chosen
-    Autor:
-        nicola vianello
-    Date:
-        03 December 2015
-
     """
 
     def __init__(self, data):
-         # this is the only self defined in init
-         self.shot   = data.attrs['shot']
-         # given that you now open the corresponding tree through a connection
-         self.camera = data.attrs['camera']
-         self.los    = data.los.values # the plus 1 is coincident with the fact that
-         # now to we need a -1 to ensure that the nDiods are correctly the indices
-         self.trange = [data.time.values.min(), data.time.values.max()]
-    @classmethod
-    def fromshot(Cls, shot, camera, **kwargs):
+        # this is the only self defined in init
+        self.shot = data.attrs['shot']
+        # given that you now open the corresponding tree through a connection
+        self.camera = data.attrs['camera']
+        self.los = data.los.values  # the plus 1 is coincident with the fact that
+        # now to we need a -1 to ensure that the nDiods are correctly the
+        # indices
+        self.trange = [data.time.values.min(), data.time.values.max()]
+
+    @staticmethod
+    def fromshot(shot, camera, **kwargs):
         """
         Return the calibrated signal of the XtomoCamera LoS chosen. It is build as a `classmethod` so
         can be called without instance
@@ -71,8 +70,8 @@ class XtomoCamera(object):
                 los = np.asarray(los,dtype='int')
         trange = kwargs.get('trange',[-0.01,2.2])
         # first of all define the proper los
-        _Names = Cls.channels(shot, camera, los=los)
-        _g,_a  = Cls.gains(shot, camera, los=los)
+        _Names = XtomoCamera.channels(shot, camera, los=los)
+        _g,_a  = XtomoCamera.gains(shot, camera, los=los)
         values=[]
         with tcv.shot(shot) as conn:
             for _n in _Names:
@@ -91,8 +90,8 @@ class XtomoCamera(object):
 
         return data
 
-    @classmethod
-    def channels(Cls, shot, camera, **kwargs):
+    @staticmethod
+    def channels(shot, camera, **kwargs):
         """
         Provide the names of the channel chosen in the init action
         Parameters
@@ -128,8 +127,8 @@ class XtomoCamera(object):
             _Names=_Names[index]
         return _Names.values
 
-    @classmethod
-    def gains(Cls, shot, camera, **kwargs):
+    @staticmethod
+    def gains(shot, camera, **kwargs):
         """
 
         Parameters
@@ -215,8 +214,8 @@ class XtomoCamera(object):
 
         return gAins,aOut
 
-    @classmethod
-    def geo(Cls, shot, camera, **kwargs):
+    @staticmethod
+    def geo(shot, camera, **kwargs):
         """
 
         Parameters
