@@ -102,24 +102,21 @@ class XtomoCamera(object):
         return names[los - 1].values
 
     @staticmethod
-    def gains(shot, camera, **kwargs):
+    def gains(shot, camera, los=None):
         """
-
         Parameters
         ----------
-        Input:
-            shot   = shot number
-            camera = number of camera
-        kwargs:
-            los    = Optional. Number of diods
+            Same as XtomoCamera.fromshot()
 
         Returns
         -------
         The gains and the multiplication factor for the chosen camera and LoS
         """
 
-        los = kwargs.get('los', np.arange(20) + 1)
-        los = np.atleast_1d(los)
+        if los:
+            los = np.atleast_1d(los)
+        else:
+            los = np.arange(20) + 1
 
         # to convert we must define an index which is not modified
         IndeX = los - 1
@@ -128,33 +125,25 @@ class XtomoCamera(object):
         catDefault = XtomoCamera.calibration_data(shot)
         angFact = catDefault['angfact'][:, camera-1]
 
-        if (camera < 10):
-            stringa = '00' + str(camera)
-        else:
-            stringa = '0' + str(camera)
-
         gAins = np.zeros(20)
         aOut = np.zeros(20)
         # remeber that we need to collect all the values of gains
         # and we decide to choose the only needed afterwards
         with tcv.shot(shot) as conn:
             for diods in range(20):
-                if diods < 9:
-                    strDiods = '00' + str(diods+1)
-                else:
-                    strDiods = '0' + str(diods+1)
-                _str = '\\vsystem::tcv_publicdb_i["XTOMO_AMP:'+stringa+'_'+strDiods+'"]'
-
-                out = conn.tdi(_str)
+                out = conn.tdi(
+                    '\\vsystem::tcv_publicdb_i["XTOMO_AMP:{:03}_{:03}"]'
+                    .format(camera, diods + 1))
                 gAins[diods] = 10**out.values
                 aOut[diods] = angFact[diods]
 
-        # now we need to reorder to take into account the ordering of the diodes
+        # now we need to reorder to take into account the ordering of the
+        # diodes
         if shot <= 34800:
             index = np.asarray([
-                np.arange(1,180,1),
-                180 + [2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18,
-                       17, 20, 19]])
+                np.arange(1, 180, 1),
+                180 + [2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15,
+                       18, 17, 20, 19]])
         else:
             aZ = np.arange(1, 21, 1)
             bZ = np.arange(40, 20, -1)
@@ -173,7 +162,7 @@ class XtomoCamera(object):
                                                                                                     np.append(hZ,iZ))))))))
         index -= 1  # remember that matlab start from 1
 
-        mask = (camera - 1) * 20 +np.arange(0, 20, 1)
+        mask = (camera - 1) * 20 + np.arange(0, 20, 1)
         ia = np.argsort(index[np.arange(index.shape[0])[np.in1d(index, mask)]])
         gAins = gAins[ia]
 
