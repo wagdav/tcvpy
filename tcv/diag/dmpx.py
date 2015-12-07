@@ -32,18 +32,14 @@ class Top(object):
     @staticmethod
     def channels(shot, **kwargs):
         """
-
         Parameters
         ----------
-        Input:
-            shot: Shot number
-        kwargs
-            los: Eventually the los we would like to look at
+        Same as fromshot.
 
         Returns
         -------
-            the string array containing the channels, already sorted out
-            according to shot number
+        String array containing the channels, already sorted out according to
+        shot number
         """
         los = kwargs.get('los', np.arange(64) + 1)
         los = np.atleast_1d(los)
@@ -93,26 +89,30 @@ class Top(object):
     @staticmethod
     def fromshot(shot, **kwargs):
         """
+        Return the calibrated DMPX signals.
 
         Parameters
         ----------
-        Input:
-            shot = shot number
-        kwargs
-            los = line of sights
-            trange = trange of interest
-            plt = boolean. Default is false. If True it plots the data
+        shot : int or MDSConnection
+            Shot number or connection instance
+        camera : int
+            Number of the XTOMO camera
+        los : int or sequence of ints
+            Optional argument with lines of sight (LoS) of the chosen camera.
+            If None, it loads all the 20 channels
 
         Returns
         -------
+
         An xray.DataArray containing the data, time basis and all the
         information in dictionary
 
         Examples
-        ---------
-        In [1]: from tcv.diag.dmpx import Top
-        In [2]: data = Top.fromshot(50730, los=32)
+        --------
+        >>> from tcv.diag.dmpx import Top
+        >>> data = Top.fromshot(50730, los=32)
         """
+
         # define the defauls LoS if not given
         los = kwargs.get('los', np.arange(64) + 1)
         los = np.atleast_1d(los)
