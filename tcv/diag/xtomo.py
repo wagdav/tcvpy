@@ -72,38 +72,34 @@ class XtomoCamera(object):
         return data
 
     @staticmethod
-    def channels(shot, camera, **kwargs):
+    def channels(shot, camera, los=None):
         """
         Provide the names of the channel chosen in the init action
+
         Parameters
         ----------
-        Input:
-            shot   = shot number
-            camera = number of camera
-        kwargs:
-            los    = Optional. Number of diods
+        shot : int or MDSConnection
+            Shot number or connection instance
+        camera : int
+            Number of the XTOMO camera
+        los : int or sequence of ints
+            Optional argument with lines of sight (LoS) of the chosen camera.
+            If None, it loads all the 20 channels
 
         Returns
         -------
-         String array with the names
+        Array of strings with the channel names
         """
 
-        los = kwargs.get('los', np.arange(20) + 1)
-        los = np.atleast_1d(los)
-        index = los - 1
-
-        if (camera < 10):
-            stringa = '0' + str(camera)
+        if los:
+            los = np.atleast_1d(los)
         else:
-            stringa = str(camera)
+            los = np.arange(20) + 1
 
         with tcv.shot(shot) as conn:
-            _Names = conn.tdi(r'\base::xtomo:array_0' + stringa + ':source')
+            names = conn.tdi(r'\base::xtomo:array_{:03}:source'.format(camera))
 
-        if np.size(los) != 20:
-            _Names = _Names[index]
-
-        return _Names.values
+        return names[los - 1].values
 
     @staticmethod
     def gains(shot, camera, **kwargs):
