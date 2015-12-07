@@ -10,9 +10,6 @@ import xray # this is needed as tdi save into an xray
 import tcv  # this is the tcv main library component
 import os   # for correctly handling the directory position
 
-# to get the proper directory of the location of the package
-_package_folder = os.path.dirname(os.path.realpath(__file__))
-
 
 class XtomoCamera(object):
 
@@ -146,13 +143,8 @@ class XtomoCamera(object):
         # to convert we must define an index which is not modified
         IndeX = los - 1
 
-        # calibration neeeds to be called at the init of the camera
-        if shot <= 34800:
-            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2001.mat')
-        else:
-            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2008.mat')
-
         # etendue
+        catDefault = XtomoCamera.calibration_data(shot)
         angFact = catDefault['angfact'][:, camera-1]
 
         if (camera < 10):
@@ -231,15 +223,20 @@ class XtomoCamera(object):
         los = kwargs.get('los', np.arange(20) + 1)
         los = np.atleast_1d(los)
 
-        if shot <= 34800:
-            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2001.mat')
-        else:
-            catDefault = scipy.io.loadmat(_package_folder+'/xtomocalib/cat_defaults2008.mat')
-
-
-        # load the chords and the diods use
         index = los - 1  # convert los into indices
+        catDefault = XtomoCamera.calibration_data(shot)
         xchord = catDefault['xchord'][:, (camera - 1) * 20 + index] / 100.
         ychord = catDefault['ychord'][:, (camera - 1) * 20 + index] / 100.
 
         return xchord, ychord
+
+    @staticmethod
+    def calibration_data(shot):
+        base = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'xtomocalib')
+
+        if shot <= 34800:
+            return scipy.io.loadmat(os.path.join(base, 'cat_defaults2001.mat'))
+        else:
+            return scipy.io.loadmat(os.path.join(base, 'cat_defaults2008.mat'))
