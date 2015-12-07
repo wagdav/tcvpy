@@ -5,7 +5,7 @@ Written by Nicola Vianello
 """
 
 import numpy as np
-import scipy
+import scipy.io
 import xray # this is needed as tdi save into an xray
 import tcv  # this is the tcv main library component
 import os   # for correctly handling the directory position
