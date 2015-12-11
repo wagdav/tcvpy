@@ -11,8 +11,8 @@ class General(object):
     Python class to access some general signals for TCV. Implemented method (as @classmethod) are
     ip : read plasma current
     bphi : read the magnetic field on axis
-    neLine: Line integrated density
-    neAvg : Line average Density
+    neline: Line integrated density
+    neavg : Line average Density
     betapol: poloidal beta
     q: q. Can load q0 or q95 depending on call
     delta: Triangularity. Both at the edge and at 95% of the flux
@@ -46,7 +46,7 @@ class General(object):
             if data.values.shape[0] > 1:
                 ax.plot(data[data.dims[0]].values, data.values/1e3)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0,:]/1e3)
+                ax.plot(data[data.dims[0]].values, data.values[0, :]/1e3)
             ax.set_title(r'Shot # '+str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'I$_p$ [kA]')
@@ -79,7 +79,7 @@ class General(object):
             if data.values.shape[0] > 1:
                 ax.plot(data[data.dims[0]].values, data.values)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0,:])
+                ax.plot(data[data.dims[0]].values, data.values[0, :])
             ax.set_title(r'Shot # '+str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'B$_{\phi}$ [T]')
@@ -87,7 +87,7 @@ class General(object):
         return data
 
     @staticmethod
-    def neLine(shot, plt=False):
+    def neline(shot, plt=False):
         """
         Load the Line Integrated Density
         Parameters
@@ -112,15 +112,14 @@ class General(object):
             if data.values.shape[0] > 1:
                 ax.plot(data[data.dims[0]].values, data.values/1e19)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0,:]/1e19)
+                ax.plot(data[data.dims[0]].values, data.values[0, :]/1e19)
             ax.set_title(r'Shot # '+str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'n$_{e}$ Line Integrated [10$^{19}$ fringes]')
         return data
 
-
     @staticmethod
-    def neAvg(shot, plt=False):
+    def neavg(shot, plt=False):
         """
         Load the Line Average Density
         Parameters
@@ -145,7 +144,7 @@ class General(object):
             if data.values.shape[0] > 1:
                 ax.plot(data[data.dims[0]].values, data.values/1e19)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0,:]/1e19)
+                ax.plot(data[data.dims[0]].values, data.values[0, :]/1e19)
             ax.set_title(r'Shot # '+str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'n$_{e}$ Line Average [10$^{19}$ m$^{-3}$]')
@@ -159,7 +158,7 @@ class General(object):
         ----------
         shot : shot number
         plt  : Boolean (default is False). If True it plot the current time traces
-        qedge: Boolean (default is False). If it is True it load the qedge rather than the q95
+        edge: Boolean (default is False). If it is True it load the qedge rather than the q95
         Returns
         -------
         xray Data set with the q computed as default at 95% of poloidal Flux. If edge is se to True
@@ -171,12 +170,12 @@ class General(object):
         >>> q95   = General.q(50882,plt=True)
         >>> qedge = General.q(50882,plt=True,edge=True)
         """
-        if edge == False:
-            Str = r'\results::q_95'
-            axlabel=r'q$_{95}$'
-        else:
+        if edge:
             Str = r'\results::q_edge'
             axlabel = r'q$_{edge}$'
+        else:
+            Str = r'\results::q_95'
+            axlabel = r'q$_{95}$'
 
         data = tcv.shot(shot).tdi(Str)
 
@@ -191,6 +190,7 @@ class General(object):
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(axlabel)
         return data
+
     @staticmethod
     def kappa(shot, plt=False, edge = False):
         """
@@ -208,15 +208,15 @@ class General(object):
         Examples
         -------
         >>> from tcv.diag import General
-        >>> kappa95   = General.kappa(50882,plt=True)
-        >>> kappaEdge = General.kappa(50882,plt=True,edge=True)
+        >>> kappa95   = General.kappa(50882, plt=True)
+        >>> kappaEdge = General.kappa(50882, plt=True, edge=True)
         """
-        if edge == False :
-            Str = r'\results::kappa_95'
-            axlabel=r'$\varepsilon_{95}$'
-        else:
+        if edge:
             Str = r'\results::kappa_edge'
             axlabel = r'$\varepsilon_{edge}$'
+        else:
+            Str = r'\results::kappa_95'
+            axlabel=r'$\varepsilon_{95}$'
 
         data = tcv.shot(shot).tdi(Str)
 
@@ -249,16 +249,16 @@ class General(object):
         Examples
         -------
         >>> from tcv.diag import General
-        >>> delta95   = General.delta(50882,plt=True)
-        >>> deltaEdge = General.delta(50882,plt=True,edge=True)
+        >>> delta95   = General.delta(50882, plt=True)
+        >>> deltaEdge = General.delta(50882, plt=True, edge=True)
         """
-        if edge == False and q95 == True:
-            Str = r'\results::delta_95'
-            axlabel=r'$\delta_{95}$'
-        elif edge == True:
+        if edge:
             q95 == False
             Str = r'\results::delta_edge'
             axlabel = r'$\delta_{edge}$'
+        elif q95:
+            Str = r'\results::delta_95'
+            axlabel=r'$\delta_{95}$'
 
         data = tcv.shot(shot).tdi(Str)
 
@@ -290,7 +290,7 @@ class General(object):
         Examples
         -------
         >>> from tcv.diag import General
-        >>> tedf   = General.tedf(50882,plt=True)
+        >>> tedf   = General.tedf(50882, plt=True)
         """
         try:
             data = tcv.shot(shot).tdi(r'\results::te_x_a')
@@ -305,7 +305,7 @@ class General(object):
                 ax.set_title(r'Shot # '+str(shot))
                 ax.set_xlabel(r't [s]')
                 ax.set_ylabel(r'T_e [keV]')
+            return data
         except:
             print 'No data stored for Xte for this shot'
-        return data
 
