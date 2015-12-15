@@ -16,7 +16,7 @@ class Bolo(object):
     """
 
     @staticmethod
-    def fromshot(shot, offset=True):
+    def fromshot(shot, offset=True, filter='gottardi'):
         """
         Return the calibrated signal of the BOLO diagnostic with the possibility to choose given LoS.
         So far it mimic only one of the filter used
@@ -24,16 +24,16 @@ class Bolo(object):
         ----------
         shot: Shot number which will be used
         offset: Boolean. If set it remove the offset before the shot. Default is true
+        filter: String indicating the type of string used to load the data. Available filters are
+                'gottardi' (local implementation) or 'savitzky'
         Returns
         -------
-        Calibrated BOLO signals. Computation is done as a default using a savitzky-golay method
+        Calibrated BOLO signals.
 
         Examples
         -------
-
         >>> import tcv
         >>> boloData = tcv.diag.Bolo.fromshot(50766)
-
         """
         conn = tcv.shot(shot)
         # collect the raw data
@@ -63,12 +63,22 @@ class Bolo(object):
             print ' -- Offset not removed  --'
 
         # now we compute the calibrated data
-        sm, smd = Bolo.savitzkyfilt(raw, iwin = 45, pol = 4)
+        if filter == 'gottardi':
+            ts, sm, smd = Bolo.gottardifilt(raw)
+            #data.time.values = ts
+        elif filter == 'savitzky':
+            sm, smd = Bolo.savitzkyfilt(raw)
+        else:
+            print('Filter not implemented, using default gottardi')
+            ts, sm, smd = Bolo.gottardifilt(raw)
+            #data.time.values = tm
+
         dynVolt = sm + smd*tau.values.reshape(1,tau.shape[0])
-        data = dynVolt / (gains.values.reshape(1,gains.shape[0])) * calibration.values.reshape(1,
-                                                                                            calibration.shape[0]
-                                                                                               )*etendue.values.reshape(1,etendue.shape[0])*convfact
-        return dynVolt
+        data = dynVolt / (gains.values.reshape(1, gains.shape[0]) *  \
+               calibration.values.reshape(1, calibration.shape[0])* \
+               etendue.values.reshape(1, etendue.shape[0])*convfact)
+
+        return data
 
     @staticmethod
     def geo(shot):
@@ -103,7 +113,6 @@ class Bolo(object):
         """
         Perform an appropriate smoothing of the signal according to a given formula
         Parameters.
-        Not working properly
         ----------
         data: xarray DataSet as obtained from a TDI call
         knoise: number of smoothing iterations
@@ -114,54 +123,54 @@ class Bolo(object):
 
         Returns
         -------
-        Smoothed array
+        Smoothed array and time derivative
         """
 
         # standard definition
         knoise = kwargs.get('knoise', 20)
-        ibave  = kwargs.get('ibave', 80)
-        ieave  = kwargs.get('ieave', 10)
+        ibave = kwargs.get('ibave', 80)
+        ieave = kwargs.get('ieave', 10)
         alevel = kwargs.get('alevel', 0.16)
         tNoise = kwargs.get('tNoise', [-0.04, 0])
-        # sampling rate
-        dt = (data.time.values.max()-data.time.values.min())/(data.time.size-1)
         time = data.time.values
         # determine the indices where the noise level is computed
-        indNoise = ((time>= tNoise[0]) & (time<= tNoise[1]))
-        # create a copy of the signal changin the first and last point
+        indNoise = ((time >= tNoise[0]) & (time <= tNoise[1]))
+        # create a copy of the signal changing the first and last point
         dataC = data.values.transpose().copy()
         dataC[:, 0] = dataC[:, :ibave].mean()
         dataC[:, -1] = dataC[:, (dataC.shape[1]-ieave+1):-1].mean()
         # copy of the data to perform smoothing
-        YS_left = dataC.copy()
-        YS_right= dataC.copy()
-        count=0
+        YS_left = numpy.zeros((dataC.shape[0], dataC.shape[1]))
+        YS_right = numpy.zeros((dataC.shape[0], dataC.shape[1]))
+        YS_left[:, 0] = dataC[:, 0]
+        YS_right[:, -1] = dataC[:, -1]
+        count = 0
         while (count < knoise):
-            diffNorm = numpy.abs(numpy.diff(dataC, axis = -1)/numpy.diff(time)/numpy.max(numpy.abs(numpy.diff(
-                dataC[:,indNoise], axis = -1)/numpy.diff(time[indNoise]))[1:]))
-            for k in numpy.arange(1, data.time.size-1,1):
+            diffNorm = numpy.abs(numpy.diff(dataC, axis=-1)/numpy.diff(time)/numpy.max(numpy.abs(numpy.diff(
+                dataC[:, indNoise], axis=-1)/numpy.diff(time[indNoise]))[1:]))
+            for k in numpy.arange(1, time.size-1, 1):
                 YS_left[:, k] = (YS_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3. + numpy.tanh(alevel*numpy.max([
-                    diffNorm[:, k-1], diffNorm[:, k]]))*(dataC[:, k]-(YS_left[:, k-1] + dataC[:, k] + dataC[:, k+1]))/3
-                NB = (time.size-1) - k
-                YS_right[:, NB] = (YS_right[:, NB+1] + dataC[:, NB] + dataC[:,NB-1])/3. + numpy.tanh(
-                    alevel*numpy.max([diffNorm[:, NB-1], diffNorm[:, NB]]))*(dataC[:, NB]-
-                                                                             (YS_right[:, NB+1] +dataC[:, NB] +
-                                                                              dataC[:,NB-1])/3.)
-            dataC[:, 2:] = (YS_left[:, 2:]+ YS_right[:, 2:])/2.
+                    diffNorm[:, k-1], diffNorm[:, k]]))*(dataC[:, k]-(YS_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3.)
+                NB = - k
+                YS_right[:, NB] = (YS_right[:, NB+1] + dataC[:, NB] + dataC[:, NB-1])/3. + numpy.tanh(
+                    alevel*numpy.max([diffNorm[:, NB-1], diffNorm[:, NB]]))*(dataC[:, NB] -
+                                                                             (YS_right[:, NB+1] + dataC[:, NB] +
+                                                                              dataC[:, NB-1])/3.)
+            dataC[:, 1:] = (YS_left[:, 1:] + YS_right[:, 1:])/2.
             count += 1
         # redefine the time basis
-        ts = 0.5*(time + numpy.roll(time,1))
-        ts[0] = 0
+        ts = numpy.zeros(dataC.shape[1])
+        ts[:-1] = 0.5*(time[1:] + time[:-1])
         ts[-1] = ts[-2] + (ts[-2]-ts[-3])
         # define the output smoothed signal
-        ys = 0.5*(dataC + numpy.roll(dataC, -1, axis=-1))
-        ys[:,0] = 0
+        ys = 0.5*(dataC + numpy.roll(dataC, 1, axis=-1))
         ys[:, -1] = ys[:, -2]
         # define the output smoothed derivative
-        ds = numpy.diff(dataC, axis = -1)/numpy.diff(time)
-        ds[0] = 0
+        ds = numpy.zeros((dataC.shape[0], dataC.shape[1]))
+        ds[:,:-1] = numpy.diff(dataC, axis=-1)/numpy.diff(time)
+        ds[:, -1] = 0
 
-        return ts, ys, ds
+        return ts, ys.transpose(), ds.transpose()
 
     @staticmethod
     def savitzkyfilt(data, **kwargs):
