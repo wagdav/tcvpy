@@ -7,12 +7,13 @@ Written by Nicola Vianello
 import numpy
 import scipy
 import tcv
+import xray
 
 
 class Bolo(object):
     """
     Load calibrated Bolometry cameras, checking also for good not saturated signals
-    All methods implemented as staicmethods so that can be called directly
+    All methods implemented as staticmethods so that can be called directly
     """
 
     @staticmethod
@@ -25,7 +26,7 @@ class Bolo(object):
         shot: Shot number which will be used
         offset: Boolean. If set it remove the offset before the shot. Default is true
         filter: String indicating the type of string used to load the data. Available filters are
-                'gottardi' (local implementation) or 'savitzky'
+                'gottardi' (local implementation, default) or 'savitzky' (not as good as gottardi)
         Returns
         -------
         Calibrated BOLO signals.
@@ -53,11 +54,11 @@ class Bolo(object):
         tau = conn.tdi(r'\base::bolo:tau')
         # collect the geometry dictionary which will be used afterward. I will append it to the data as additional
         # dictionary
-        geoDict = Bolo.geo(shot)
+        geodict = Bolo.geo(shot)
         # we define the point when the offset removing mechanism is switched off
         start = conn.tdi('timing("401")').values
         if start < 0 and offset:
-            raw -= raw.where(((raw.time <0) & (raw.time > 0.7*start))).mean(dim='time')
+            raw -= raw.where(((raw.time < 0) & (raw.time > 0.7*start))).mean(dim='time')
             print ' -- Offset removal -- '
         else:
             print ' -- Offset not removed  --'
@@ -65,28 +66,45 @@ class Bolo(object):
         # now we compute the calibrated data
         if filter == 'gottardi':
             ts, sm, smd = Bolo.gottardifilt(raw)
-            #data.time.values = ts
         elif filter == 'savitzky':
             sm, smd = Bolo.savitzkyfilt(raw)
         else:
             print('Filter not implemented, using default gottardi')
+            filter = 'gottardi'
             ts, sm, smd = Bolo.gottardifilt(raw)
-            #data.time.values = tm
 
-        dynVolt = sm + smd*tau.values.reshape(1,tau.shape[0])
-        data = dynVolt / (gains.values.reshape(1, gains.shape[0]) *  \
-               calibration.values.reshape(1, calibration.shape[0])* \
+        dynVolt = sm + smd*tau.values.reshape(1, tau.shape[0])
+        data = dynVolt / (gains.values.reshape(1, gains.shape[0]) *
+               calibration.values.reshape(1, calibration.shape[0])*
                etendue.values.reshape(1, etendue.shape[0])*convfact)
-
-        return data
+        # transform data on xray data source and adding geo as a dictionary
+        out = xray.DataArray(data, dims = ('time', 'los'))
+        if filter == 'gottardi':
+            out.coords['time'] = ts
+        else:
+            out.coords['time'] = time
+        out.coords['los'] = numpy.linspace(1, 64, 64, dtype='int')
+        # adding the attributes
+        out.attrs['shot'] = 'shot'
+        out.attrs['units'] = 'W/m^2'
+        for key in geodict.keys():
+            out.attrs[key] = geodict[key]
+        return out
 
     @staticmethod
     def geo(shot):
         """
-        Returns a dictionary with the geometrical information regarding the passed LoS
+
+        Parameters
+        ----------
+        shot: Shot number
+
+        Returns
         -------
+        Return a dictionary with all the geometrical information for the BOLO diagnostic
 
         """
+
         conn = tcv.shot(shot)
         # angle of pinhole surface normal
         vangle_cp = numpy.repeat(scipy.pi, 8)
@@ -94,18 +112,18 @@ class Bolo(object):
         vangle_cp[-1] *= 1/2.
 
         # radial position of the pinholes
-        xpos = numpy.asarray([0.88, 1.235, 1.235, 1.235, 1.235, 1.235, 1.235,0.88])
+        xpos = numpy.asarray([0.88, 1.235, 1.235, 1.235, 1.235, 1.235, 1.235, 0.88])
         # vertical position of the pinholes
         ypos = numpy.asarray([.815, 0.455, 0.455, -.0025, -.0025, -0.46, -0.46, -0.815])
         # provide now the exact positions of the 64 LoS
         xdet = conn.tdi(r'\base::bolo:radial_pos').values
         ydet = conn.tdi(r'\base::bolo:z_pos').values
         # detector poloidal size and toroidal size
-        detSize = numpy.asarray([.0015, 0.004])
+        detsize = numpy.asarray([.0015, 0.004])
         # aperture size (poloidal, toroidal)
-        apeSize = numpy.asarray([ [0.0026*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0026*2],
+        apesize = numpy.asarray([[0.0026*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0026*2],
                                  [0.01*2, 0.008*2, 0.008*2, 0.008*2, 0.008*2, 0.008*2, 0.008*2, 0.01*2]])
-        out = dict(pinO_x = xpos, pinO_z = ypos, xdet = xdet, ydet = ydet, detsize = detSize, apsize = apeSize)
+        out = dict(pinO_x = xpos, pinO_z = ypos, xdet = xdet, ydet = ydet, detsize = detsize, apsize = apesize)
         return out
 
     @staticmethod
@@ -140,23 +158,23 @@ class Bolo(object):
         dataC[:, 0] = dataC[:, :ibave].mean()
         dataC[:, -1] = dataC[:, (dataC.shape[1]-ieave+1):-1].mean()
         # copy of the data to perform smoothing
-        YS_left = numpy.zeros((dataC.shape[0], dataC.shape[1]))
-        YS_right = numpy.zeros((dataC.shape[0], dataC.shape[1]))
-        YS_left[:, 0] = dataC[:, 0]
-        YS_right[:, -1] = dataC[:, -1]
+        ys_left = numpy.zeros((dataC.shape[0], dataC.shape[1]))
+        ys_right = numpy.zeros((dataC.shape[0], dataC.shape[1]))
+        ys_left[:, 0] = dataC[:, 0]
+        ys_right[:, -1] = dataC[:, -1]
         count = 0
-        while (count < knoise):
-            diffNorm = numpy.abs(numpy.diff(dataC, axis=-1)/numpy.diff(time)/numpy.max(numpy.abs(numpy.diff(
+        while count < knoise:
+            diffnorm = numpy.abs(numpy.diff(dataC, axis=-1)/numpy.diff(time)/numpy.max(numpy.abs(numpy.diff(
                 dataC[:, indNoise], axis=-1)/numpy.diff(time[indNoise]))[1:]))
             for k in numpy.arange(1, time.size-1, 1):
-                YS_left[:, k] = (YS_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3. + numpy.tanh(alevel*numpy.max([
-                    diffNorm[:, k-1], diffNorm[:, k]]))*(dataC[:, k]-(YS_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3.)
+                ys_left[:, k] = (ys_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3. + numpy.tanh(alevel*numpy.max([
+                    diffnorm[:, k-1], diffnorm[:, k]]))*(dataC[:, k]-(ys_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3.)
                 NB = - k
-                YS_right[:, NB] = (YS_right[:, NB+1] + dataC[:, NB] + dataC[:, NB-1])/3. + numpy.tanh(
-                    alevel*numpy.max([diffNorm[:, NB-1], diffNorm[:, NB]]))*(dataC[:, NB] -
-                                                                             (YS_right[:, NB+1] + dataC[:, NB] +
+                ys_right[:, NB] = (ys_right[:, NB+1] + dataC[:, NB] + dataC[:, NB-1])/3. + numpy.tanh(
+                    alevel*numpy.max([diffnorm[:, NB-1], diffnorm[:, NB]]))*(dataC[:, NB] -
+                                                                             (ys_right[:, NB+1] + dataC[:, NB] +
                                                                               dataC[:, NB-1])/3.)
-            dataC[:, 1:] = (YS_left[:, 1:] + YS_right[:, 1:])/2.
+            dataC[:, 1:] = (ys_left[:, 1:] + ys_right[:, 1:])/2.
             count += 1
         # redefine the time basis
         ts = numpy.zeros(dataC.shape[1])
@@ -167,7 +185,7 @@ class Bolo(object):
         ys[:, -1] = ys[:, -2]
         # define the output smoothed derivative
         ds = numpy.zeros((dataC.shape[0], dataC.shape[1]))
-        ds[:,:-1] = numpy.diff(dataC, axis=-1)/numpy.diff(time)
+        ds[:, :-1] = numpy.diff(dataC, axis=-1)/numpy.diff(time)
         ds[:, -1] = 0
 
         return ts, ys.transpose(), ds.transpose()
@@ -189,12 +207,12 @@ class Bolo(object):
             (xray data set for signal, xray data set for derivative)
         """
         from scipy import signal
-        iwin = kwargs.get('iwin', 25)
+        iwin = kwargs.get('iwin', 21)
         pol = kwargs.get('pol', 4)
-        smoothed = data.copy()
-        smoothed.values = scipy.signal.savgol_filter(smoothed, iwin, pol, axis = 0)
-        smoothedDer = data.copy()
-        dt = (data.time.values.max()-data.time.values.min())/(data.time.values.size-1)
-        smoothedDer.values = scipy.signal.savgol_filter(smoothedDer, iwin, pol+1, axis=0, delta =dt)
-        return (smoothed, smoothedDer)
-
+        g = [scipy.signal.savgol_coeffs(iwin, pol, i) for i in range(3)]
+        smoothed = numpy.asarray([numpy.convolve(g[0], data.values[:, m], mode='same') for m in range(
+            data.values.shape[1])])
+        dt = numpy.mean(numpy.diff(data.time.values))
+        smoothedder = -numpy.asarray([numpy.convolve(g[1], data.values[:, m], mode='same') for m in range(
+            data.values.shape[1])])/dt
+        return smoothed.transpose(), smoothedder.transpose()
