@@ -45,10 +45,10 @@ class XtomoCamera(object):
         >>> cam = tcv.diag.XtomoCamera.fromshot(50766, camera=1, los=[4, 5])
         """
 
-        if los:
-            los = np.atleast_1d(los)
-        else:
+        if los is None:
             los = np.arange(20) + 1
+        else:
+            los = np.atleast_1d(los)
 
         values = []
         with tcv.shot(shot) as conn:
@@ -91,10 +91,10 @@ class XtomoCamera(object):
         Array of strings with the channel names
         """
 
-        if los:
-            los = np.atleast_1d(los)
-        else:
+        if los is None:
             los = np.arange(20) + 1
+        else:
+            los = np.atleast_1d(los)
 
         with tcv.shot(shot) as conn:
             names = conn.tdi(r'\base::xtomo:array_{:03}:source'.format(camera))
@@ -113,10 +113,10 @@ class XtomoCamera(object):
         The gains and the multiplication factor for the chosen camera and LoS
         """
 
-        if los:
-            los = np.atleast_1d(los)
-        else:
+        if los is None:
             los = np.arange(20) + 1
+        else:
+            los = np.atleast_1d(los)
 
         # to convert we must define an index which is not modified
         IndeX = los - 1
@@ -182,10 +182,10 @@ class XtomoCamera(object):
             the x,y coordinates of the LoS for the chosen camera
         """
 
-        if los:
-            index = np.atleast_1d(los) - 1
-        else:
+        if los is None:
             index = np.arange(20)
+        else:
+            index = np.atleast_1d(los) - 1
 
         catDefault = XtomoCamera.calibration_data(shot)
         xchord = catDefault['xchord'][:, (camera - 1) * 20 + index] / 100.
