@@ -276,10 +276,10 @@ class Top(object):
             gainC = gainC[II]
 
         # limit the output to the chosen diods
-        if los:
-            indexLos = np.atleast_1d(los) - 1
-        else:
+        if los is None:
             indexLos = np.arange(64)
+        else:
+            indexLos = np.atleast_1d(los) - 1
 
         cOut = calib_coeff_t[indexLos]
         gOut = gainC[indexLos]
