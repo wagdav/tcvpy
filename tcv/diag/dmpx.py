@@ -27,7 +27,7 @@ class Top(object):
     """
 
     @staticmethod
-    def channels(shot, **kwargs):
+    def channels(shot, los=None):
         """
         Parameters
         ----------
@@ -38,8 +38,11 @@ class Top(object):
         String array containing the channels, already sorted out according to
         shot number
         """
-        los = kwargs.get('los', np.arange(64) + 1)
-        los = np.atleast_1d(los)
+
+        if los is None:
+            los = np.arange(64) + 1
+        else:
+            los = np.atleast_1d(los)
 
         # we provide here all the definition we need
         if shot < 24087 or shot > 24725:
@@ -84,7 +87,7 @@ class Top(object):
         return _chosenCards, _chosenChans
 
     @staticmethod
-    def fromshot(shot, **kwargs):
+    def fromshot(shot, los=None):
         """
         Return the calibrated DMPX signals.
 
@@ -110,9 +113,10 @@ class Top(object):
         >>> data = Top.fromshot(50730, los=32)
         """
 
-        # define the defauls LoS if not given
-        los = kwargs.get('los', np.arange(64) + 1)
-        los = np.atleast_1d(los)
+        if los is None:
+            los = np.arange(64) + 1
+        else:
+            los = np.atleast_1d(los)
 
         cards, channels = Top.channels(shot, los=los)
         Top._check_dtaq_trigger(shot)
