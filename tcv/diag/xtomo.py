@@ -50,13 +50,11 @@ class XtomoCamera(object):
         else:
             los = np.arange(20) + 1
 
-        _Names = XtomoCamera.channels(shot, camera, los=los)
-        _g, _a = XtomoCamera.gains(shot, camera, los=los)
-
         values = []
         with tcv.shot(shot) as conn:
-            for _n in _Names:
-                values.append(conn.tdi(_n, dims='time'))
+            for channel in XtomoCamera.channels(shot, camera, los=los):
+                values.append(conn.tdi(channel, dims='time'))
+
         data = xray.concat(values, dim='los')
         data['los'] = los
 
@@ -65,7 +63,9 @@ class XtomoCamera(object):
 
         # and now we normalize conveniently
         # FIXME: use xray's infrastructure to compute this
-        data *= np.transpose(np.tile(_a, (data.values.shape[1], 1)) / np.tile(_g, (data.values.shape[1], 1)))
+        gain, amp = XtomoCamera.gains(shot, camera, los=los)
+        data *= np.transpose(np.tile(gain, (data.values.shape[1], 1))
+                             / np.tile(amp, (data.values.shape[1], 1)))
 
         data.attrs.update({'camera': camera})
 
