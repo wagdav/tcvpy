@@ -114,9 +114,6 @@ class Top(object):
         los = kwargs.get('los', np.arange(64) + 1)
         los = np.atleast_1d(los)
 
-        # define the default trange if not given
-        trange = kwargs.get('trange', [-0.01, 2.2])
-        # first of all choose the right channels and cards
         cards, channels = Top.channels(shot, los=los)
         Top._check_dtaq_trigger(shot)
         fast = Top._is_fast(shot, cards[0], channels[0])
@@ -158,9 +155,6 @@ class Top(object):
         # read the gain
         _calib, _gains = Top.gains(shot, los=los)
         data.values *= (_calib / _gains).reshape(los.size, 1)
-
-        # limit to the correct time bases
-        data[:, ((data.time > trange[0]) & (data.time <= trange[1]))]
 
         return data
 
