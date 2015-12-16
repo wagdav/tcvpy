@@ -214,7 +214,7 @@ class Top(object):
         return data
 
     @staticmethod
-    def gains(shot, **kwargs):
+    def gains(shot, los=None):
 
         """
         Provide the proper calibration factor for the signals so that can
@@ -223,23 +223,19 @@ class Top(object):
             Calibration, Gain = Top.gains()
 
         """
-        los = kwargs.get('los', np.arange(64).astype('int')+1)
-        if type(los) != np.ndarray:
-            if np.size(los) == 1:
-                los = np.asarray([los], dtype='int')
-            else:
-                los = np.asarray(los, dtype='int')
-        indexLos = los - 1  # we convert from LoS to index
 
         conn = tcv.shot(shot)
 
         # After #26575, the real voltage is indicated in the Vista window,
         # before it was the reference voltage
         mm = 500 if shot < 26765 else 1
-        voltage = conn.tdi(r'\VSYSTEM::TCV_PUBLICDB_R["ILOT:DAC_V_01"]').values * mm
+        voltage = conn.tdi(
+            r'\VSYSTEM::TCV_PUBLICDB_R["ILOT:DAC_V_01"]').values * mm
         if shot == 32035:
             voltage = 2000
-        # we first load all the calibration and then choose the correct one according to the ordering
+
+        # we first load all the calibration and then choose the correct one
+        # according to the ordering
         gainC = np.zeros(64)
         gainR = np.zeros(64)
 
@@ -327,7 +323,13 @@ class Top(object):
             II[1:64:2] = np.r_[15:-1:-1, 31:15:-1]
             calib_coeff_t = np.asarray(calib_coeff_t)[II]
             gainC = gainC[II]
+
         # limit the output to the chosen diods
+        if los:
+            indexLos = np.atleast_1d(los) - 1
+        else:
+            indexLos = np.arange(64)
+
         cOut = calib_coeff_t[indexLos]
         gOut = gainC[indexLos]
 
