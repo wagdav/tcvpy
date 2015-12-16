@@ -118,28 +118,9 @@ class Top(object):
         trange = kwargs.get('trange', [-0.01, 2.2])
         # first of all choose the right channels and cards
         _chosenCards, _chosenChans = Top.channels(shot, los=los)
+        Top._check_dtaq_trigger(shot)
 
-        # we need to repeat this because we do not know apriori which are the
-        # dtNe1 and dtNe2
-        if shot < 24087 or shot > 24725:
-            dtNe1 = r'\atlas::dt100_northeast_001:'
-            dtNe2 = r'\atlas::dt100_northeast_002:'
-        else:
-            dtNe1 = r'\atlas::dt100_southwest_001:'
-            dtNe2 = r'\atlas::dt100_southwest_002:'
-
-        # now define the appropriate channels
-        # test the dtacq triggering mode
         conn = tcv.shot(shot)
-        mode1 = conn.tdi(dtNe1 + 'MODE').values
-        mode2 = conn.tdi(dtNe2 + 'MODE').values
-        mode3 = 4
-        # now a raise exception if wrong timing occurs
-        mOde = mode1 * mode2 * mode3
-        if shot >= 24087 and mOde != 64:
-            print('Random temporal gap (5 to 25 us) between the two or three MPX acquisition cards.')
-            print('Random temporal gap (0.1 to 0.2ms) between DTACQ and TCV.')
-            raise Warning('DTACQ not in mode 4')
 
         # load the time basis
         # we check if fast nodes are collected for shot below 34988 and
@@ -363,3 +344,25 @@ class Top(object):
         return io.loadmat(os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             'dmpxcalib', name))
+
+    @staticmethod
+    def _check_dtaq_trigger(shot):
+        with tcv.shot(shot) as conn:
+            if shot < 24087 or shot > 24725:
+                dtNe1 = r'\atlas::dt100_northeast_001:'
+                dtNe2 = r'\atlas::dt100_northeast_002:'
+            else:
+                dtNe1 = r'\atlas::dt100_southwest_001:'
+                dtNe2 = r'\atlas::dt100_southwest_002:'
+
+            mode1 = conn.tdi(dtNe1 + 'MODE').values
+            mode2 = conn.tdi(dtNe2 + 'MODE').values
+            mode3 = 4
+
+            mode = mode1 * mode2 * mode3
+            if conn.shot >= 24087 and mode != 64:
+                print('Random temporal gap (5 to 25 us) between the two or '
+                      'three MPX acquisition cards.')
+                print('Random temporal gap (0.1 to 0.2ms) between DTACQ and '
+                      'TCV.')
+                raise Warning('DTACQ not in mode 4')
