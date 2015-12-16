@@ -117,14 +117,14 @@ class Top(object):
         # define the default trange if not given
         trange = kwargs.get('trange', [-0.01, 2.2])
         # first of all choose the right channels and cards
-        _chosenCards, _chosenChans = Top.channels(shot, los=los)
+        cards, channels = Top.channels(shot, los=los)
         Top._check_dtaq_trigger(shot)
-        fast = Top._is_fast(shot, _chosenCards[0], _chosenChans[0])
+        fast = Top._is_fast(shot, cards[0], channels[0])
 
         values = []
         with tcv.shot(shot) as conn:
-            for Cards, Chans, Cords in zip(_chosenCards, _chosenChans, los):
-                values.append(conn.tdi(Top._node(Cards, Chans, fast),
+            for card, channel in zip(cards, channels):
+                values.append(conn.tdi(Top._node(card, channel, fast),
                               dims='time'))
 
         # now we create the xray
