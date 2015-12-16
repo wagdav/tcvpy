@@ -119,24 +119,9 @@ class Top(object):
         # first of all choose the right channels and cards
         _chosenCards, _chosenChans = Top.channels(shot, los=los)
         Top._check_dtaq_trigger(shot)
+        fast = Top._is_fast(shot, _chosenCards[0], _chosenChans[0])
 
         conn = tcv.shot(shot)
-
-        # load the time basis
-        # we check if fast nodes are collected for shot below 34988 and
-        # eventually load fast data
-        if shot <= 34988:
-            try:
-                conn.tdi('{}selected:channel_{:03}'.format(_chosenCards[0],
-                                                           _chosenChans[0]))
-                fast = True
-                print('Loading high frequency for old shot')
-            except:
-                fast = False
-                print('Loading low frequency for old shot')
-        else:
-            fast = False
-            print('Loading fast data after big opening')
 
         values = []
         # read the raw data
@@ -366,3 +351,22 @@ class Top(object):
                 print('Random temporal gap (0.1 to 0.2ms) between DTACQ and '
                       'TCV.')
                 raise Warning('DTACQ not in mode 4')
+
+    @staticmethod
+    def _is_fast(shot, card, channel):
+        """ We check if fast nodes are collected for shot below 34988 and
+        eventually load fast data.
+        """
+
+        if shot > 34988:
+            print('Loading fast data after big opening')
+            return False
+
+        with tcv.shot(shot) as conn:
+            try:
+                conn.tdi('{}selected:channel_{:03}'.format(card, channel))
+                print('Loading high frequency for old shot')
+                return True
+            except:
+                print('Loading low frequency for old shot')
+                return False
