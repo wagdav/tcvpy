@@ -121,22 +121,11 @@ class Top(object):
         Top._check_dtaq_trigger(shot)
         fast = Top._is_fast(shot, _chosenCards[0], _chosenChans[0])
 
-        conn = tcv.shot(shot)
-
         values = []
-        # read the raw data
-        for Cards, Chans, Cords in zip(_chosenCards, _chosenChans, los):
-            if fast:
-                values.append(
-                    conn.tdi('{}selected:channel_{:03}'.format(Cards, Chans),
-                             dims='time'))
-            else:
-                values.append(
-                    conn.tdi('{}channel_{:03}'.format(Cards, Chans),
-                             dims='time'))
-
-            print('reading Cord ' + str(Cords) + ' Channel ' + str(Chans) +
-                  ' on Board ' + str(Cards[-2:-1]))
+        with tcv.shot(shot) as conn:
+            for Cards, Chans, Cords in zip(_chosenCards, _chosenChans, los):
+                values.append(conn.tdi(Top._node(Cards, Chans, fast),
+                              dims='time'))
 
         # now we create the xray
         data = xray.concat(values, dim='los')
@@ -370,3 +359,10 @@ class Top(object):
             except:
                 print('Loading low frequency for old shot')
                 return False
+
+    @staticmethod
+    def _node(card, channel, fast):
+        if fast:
+            return '{}selected:channel_{:03}'.format(card, channel)
+        else:
+            return '{}channel_{:03}'.format(card, channel)
