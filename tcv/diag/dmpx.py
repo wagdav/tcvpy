@@ -146,11 +146,8 @@ class Top(object):
         # eventually load fast data
         if shot <= 34988:
             try:
-                if _chosenChans[0] < 10:
-                    _str = _chosenCards[0] + 'selected:channel_00' + str(_chosenChans[0])
-                else:
-                    _str = _chosenCards[0] + 'selected:channel_0' + str(_chosenChans[0])
-                conn.tdi(_str)
+                conn.tdi('{}selected:channel_{:03}'.format(_chosenCards[0],
+                                                           _chosenChans[0]))
                 fast = True
                 print('Loading high frequency for old shot')
             except:
@@ -163,18 +160,17 @@ class Top(object):
         values = []
         # read the raw data
         for Cards, Chans, Cords in zip(_chosenCards, _chosenChans, los):
-            if Chans < 10:
-                if fast:
-                    values.append(conn.tdi(Cards + 'selected:channel_00' + str(Chans), dims='time'))
-                else:
-                    values.append(conn.tdi(Cards + 'channel_00' + str(Chans), dims='time'))
+            if fast:
+                values.append(
+                    conn.tdi('{}selected:channel_{:03}'.format(Cards, Chans),
+                             dims='time'))
             else:
-                if fast:
-                    values.append(conn.tdi(Cards + 'selected:channel_0' + str(Chans), dims='time'))
-                else:
-                    values.append(conn.tdi(Cards+'channel_0' + str(Chans), dims='time'))
+                values.append(
+                    conn.tdi('{}channel_{:03}'.format(Cards, Chans),
+                             dims='time'))
 
-            print('reading Cord ' + str(Cords) + ' Channel ' + str(Chans)+' on Board ' + str(Cards[-2:-1]))
+            print('reading Cord ' + str(Cords) + ' Channel ' + str(Chans) +
+                  ' on Board ' + str(Cards[-2:-1]))
 
         # now we create the xray
         data = xray.concat(values, dim='los')
