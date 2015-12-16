@@ -171,25 +171,22 @@ class XtomoCamera(object):
         return gAins, aOut
 
     @staticmethod
-    def geo(shot, camera, **kwargs):
+    def geo(shot, camera, los=None):
         """
-
         Parameters
         ----------
-        Input:
-            shot: the shot number
-            camera: the camera
-        kwargs:
-            los = the line of sight
+        Same as XtomoCamera.fromshot()
+
         Returns
         -------
             the x,y coordinates of the LoS for the chosen camera
         """
-        # loading the Diods
-        los = kwargs.get('los', np.arange(20) + 1)
-        los = np.atleast_1d(los)
 
-        index = los - 1  # convert los into indices
+        if los:
+            index = np.atleast_1d(los) - 1
+        else:
+            index = np.arange(20)
+
         catDefault = XtomoCamera.calibration_data(shot)
         xchord = catDefault['xchord'][:, (camera - 1) * 20 + index] / 100.
         ychord = catDefault['ychord'][:, (camera - 1) * 20 + index] / 100.
