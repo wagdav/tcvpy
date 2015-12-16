@@ -12,9 +12,6 @@ import numpy as np
 import tcv  # this is the tcv main library component
 import xray  # this is needed as tdi save into an xray
 
-diag_path = os.path.dirname(os.path.realpath(__file__))
-diag_path += '/dmpxcalib'
-
 
 class Top(object):
     """
@@ -249,28 +246,28 @@ class Top(object):
         I = np.where(shot >= np.r_[20030, 23323, 26555, 27127, 29921, 30759, 31446])[0][-1]
         if I == 0:
             print('Detector gain dependence on the high voltage value not included in the signal calibration')
-            calib = io.loadmat(diag_path+'/mpx_calib_first.mat')
+            calib = Top.calibration_data('mpx_calib_first.mat')
             calib_coeff_t = np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 1:
             print('Detector gain dependence on the high voltage value not included in the signal calibration')
-            calib = io.loadmat(diag_path+'/mpx_calib_sept02.mat')
+            calib = Top.calibration_data('mpx_calib_sept02.mat')
             calib_coeff_t = np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 2:
             print('Detector gain dependence on the high voltage value not included in the signal calibration')
             print('There were leaks in the top detector wire chamber for 26554<shot<27128')
             print('Calibration is not very meaningful')
-            calib = io.loadmat(diag_path+'/mpx_calib_may04.mat')
+            calib = Top.calibration_data('mpx_calib_may04.mat')
             calib_coeff_t = np.np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 3:
             print('Same gain dependence on the high voltage value taken for each channel')
-            calib = io.loadmat(diag_path+'/mpx_calib_july04.mat')
+            calib = Top.calibration_data('mpx_calib_july04.mat')
             calib_coeff = np.squeeze(calib['calib_coeff'])
             R = np.squeeze(calib['R'])
             calib_coeff_t = calib_coeff
-            calib = io.loadmat(diag_path + '/mpx_calib_may05.mat')
+            calib = Top.calibration_data('mpx_calib_may05.mat')
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
             C = np.mean(C[:, :64], 1)  # Use the same gain for each channel
@@ -278,14 +275,14 @@ class Top(object):
             gainR[:] = R
         if I == 4:
             print('Same gain dependence on the high voltage value taken for each channel')
-            calib = io.loadmat(diag_path + '/mpx_calib_may05.mat')
+            calib = Top.calibration_data('mpx_calib_may05.mat')
             calib_coeff = np.np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
             calib_coeff_t = calib_coeff
             C = np.mean(C[:, :64], 1)  # Use the same gain for each channel
             gainC[:] = np.exp(np.interp(voltage, V, np.log(C)))
-            R = io.loadmat(diag_path+'/mpx_calib_july04.mat')['R']  # use the previous relative calibration
+            R = Top.calibration_data('mpx_calib_july04.mat')['R']  # use the previous relative calibration
             gainR[:] = R
         if I == 5:
             # In this case, the different behaviour of the wires is contained
@@ -293,7 +290,7 @@ class Top(object):
             # vector: one value per wire, same value for all tensions.
             print('Gain dependence on the high voltage value calibrated for each channel')
             print('Leaks in the bottom detector, no relative calibration of the two detectors')
-            calib = io.loadmat(diag_path+'/mpx_calib_oct05.mat')
+            calib = Top.calibration_data('mpx_calib_oct05.mat')
             calib_coeff = np.np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
@@ -306,7 +303,7 @@ class Top(object):
             # in the matrix of calibration coefficients.  The gains are in a
             # vector: one value per tension, same value for all wires.
             print('Gain dependence on the high voltage value calibrated for each channel')
-            calib = io.loadmat(diag_path + '/mpx_calib_dec05_bis.mat')
+            calib = Top.calibration_data('mpx_calib_dec05_bis.mat')
             calib_coeff_top = np.squeeze(calib['calib_coeff_top'])
             C_top_av = np.squeeze(calib['C_top_av'])
             V_top = np.squeeze(calib['V_top'])
@@ -353,8 +350,14 @@ class Top(object):
 
         indices = np.arange(64)
 
-        _geoF = io.loadmat(diag_path + '/dmpx_los.mat')
+        _geoF = Top.calibration_data('dmpx_los.mat')
         xc = _geoF['xchordt'][:, indices]
         yc = _geoF['ychordt'][:, indices]
 
         return xc, yc
+
+    @staticmethod
+    def calibration_data(name):
+        return io.loadmat(os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'dmpxcalib', name))
