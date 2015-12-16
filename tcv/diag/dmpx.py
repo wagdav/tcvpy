@@ -282,8 +282,8 @@ class Top(object):
             calib_coeff_t = calib_coeff
             C = np.mean(C[:, :64], 1)  # Use the same gain for each channel
             gainC[:] = np.exp(np.interp(voltage, V, np.log(C)))
-            R = Top.calibration_data('mpx_calib_july04.mat')['R']  # use the previous relative calibration
-            gainR[:] = R
+            # use the previous relative calibration
+            gainR[:] = Top.calibration_data('mpx_calib_july04.mat')['R']
         if I == 5:
             # In this case, the different behaviour of the wires is contained
             # in the matrix of gains.  The calibration coefficients are in a
@@ -295,8 +295,10 @@ class Top(object):
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
             calib_coeff_t = calib_coeff
-            # Interpolation to get the proper gains wrt to the high tension value
-            gainC[:] = [np.interp(voltage, V, np.log(C[:, jj])) for jj in range(64)]
+            # Interpolation to get the proper gains wrt to the high tension
+            # value
+            gainC[:] = [np.interp(voltage, V, np.log(C[:, jj]))
+                        for jj in range(64)]
             gainR[:] = np.NaN
         if I == 6:
             # In this case, the different behaviour of the wires is contained
@@ -309,7 +311,9 @@ class Top(object):
             V_top = np.squeeze(calib['V_top'])
             R = np.squeeze(calib['R'])
             calib_coeff_t = []
-            for jj in range(64):  # Interpolation to get the proper calibration coefficient wrt the high tension value
+            for jj in range(64):
+                # Interpolation to get the proper calibration coefficient wrt
+                # the high tension value
                 calib_coeff_t.append(
                     np.interp(voltage, V_top, calib_coeff_top[:, jj]))
             gainC[:] = np.exp(np.interp(voltage, V_top, np.log(C_top_av)))
