@@ -188,26 +188,32 @@ class Top(object):
         gainC = np.zeros(64)
         gainR = np.zeros(64)
 
-        I = np.where(shot >= np.r_[20030, 23323, 26555, 27127, 29921, 30759, 31446])[0][-1]
+        I = np.where(shot >= np.r_[20030, 23323, 26555, 27127, 29921, 30759,
+                                   31446])[0][-1]
         if I == 0:
-            print('Detector gain dependence on the high voltage value not included in the signal calibration')
+            print('Detector gain dependence on the high voltage value not '
+                  'included in the signal calibration')
             calib = Top.calibration_data('mpx_calib_first.mat')
             calib_coeff_t = np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 1:
-            print('Detector gain dependence on the high voltage value not included in the signal calibration')
+            print('Detector gain dependence on the high voltage value not '
+                  'included in the signal calibration')
             calib = Top.calibration_data('mpx_calib_sept02.mat')
             calib_coeff_t = np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 2:
-            print('Detector gain dependence on the high voltage value not included in the signal calibration')
-            print('There were leaks in the top detector wire chamber for 26554<shot<27128')
+            print('Detector gain dependence on the high voltage value not '
+                  'included in the signal calibration')
+            print('There were leaks in the top detector wire chamber for '
+                  '26554<shot<27128')
             print('Calibration is not very meaningful')
             calib = Top.calibration_data('mpx_calib_may04.mat')
             calib_coeff_t = np.np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 3:
-            print('Same gain dependence on the high voltage value taken for each channel')
+            print('Same gain dependence on the high voltage value taken for '
+                  'each channel')
             calib = Top.calibration_data('mpx_calib_july04.mat')
             calib_coeff = np.squeeze(calib['calib_coeff'])
             R = np.squeeze(calib['R'])
@@ -219,7 +225,8 @@ class Top(object):
             gainC[:] = np.exp(np.interp(voltage, V, np.log(C)))
             gainR[:] = R
         if I == 4:
-            print('Same gain dependence on the high voltage value taken for each channel')
+            print('Same gain dependence on the high voltage value taken for '
+                  'each channel')
             calib = Top.calibration_data('mpx_calib_may05.mat')
             calib_coeff = np.np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
@@ -233,10 +240,12 @@ class Top(object):
             # In this case, the different behaviour of the wires is contained
             # in the matrix of gains.  The calibration coefficients are in a
             # vector: one value per wire, same value for all tensions.
-            print('Gain dependence on the high voltage value calibrated for each channel')
-            print('Leaks in the bottom detector, no relative calibration of the two detectors')
+            print('Gain dependence on the high voltage value calibrated for '
+                  'each channel')
+            print('Leaks in the bottom detector, no relative calibration of '
+                  'the two detectors')
             calib = Top.calibration_data('mpx_calib_oct05.mat')
-            calib_coeff = np.np.squeeze(calib['calib_coeff'])
+            calib_coeff = np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
             V = np.squeeze(calib['V'])
             calib_coeff_t = calib_coeff
@@ -244,12 +253,13 @@ class Top(object):
             # value
             gainC[:] = [np.interp(voltage, V, np.log(C[:, jj]))
                         for jj in range(64)]
-            gainR[:] = np.NaN
+            gainR[:] = np.nan
         if I == 6:
             # In this case, the different behaviour of the wires is contained
             # in the matrix of calibration coefficients.  The gains are in a
             # vector: one value per tension, same value for all wires.
-            print('Gain dependence on the high voltage value calibrated for each channel')
+            print('Gain dependence on the high voltage value calibrated for '
+                  'each channel')
             calib = Top.calibration_data('mpx_calib_dec05_bis.mat')
             calib_coeff_top = np.squeeze(calib['calib_coeff_top'])
             C_top_av = np.squeeze(calib['C_top_av'])

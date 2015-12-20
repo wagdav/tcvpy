@@ -79,15 +79,16 @@ class Lfs(object):
         Routine to check which Z position are the LoS for the current shot
         """
 
-
         with tcv.shot(shotnum) as conn:
             Zant = str(conn.tdi(r'\results::ece_lfs:z_antenna').values)
 
             if Zant[: 5] == 'Error':
-                pb5 = str(conn.tdi(r'\vsystem::tcv_publicdb_b["ILOT_NO:B5"]').values)
-                pb6 = str(conn.tdi(r'\vsystem::tcv_publicdb_b["ILOT_NO:B6"]').values)
+                pb5 = str(conn.tdi(r'\vsystem::tcv_publicdb_b["ILOT_NO:B5"]')
+                          .values)
+                pb6 = str(conn.tdi(r'\vsystem::tcv_publicdb_b["ILOT_NO:B6"]')
+                          .values)
                 if pb5[:3] == 'OFF' and pb6[:3] == 'OFF':
-                    Zant = 0.21 # already transformed in floating
+                    Zant = 0.21  # already transformed in floating
                     print('LoS at 21 cm ... ')
                 elif pb5[: 3] == 'OFF' and pb6[: 3] == 'ON ':
                     Zant = 10
@@ -96,7 +97,7 @@ class Lfs(object):
                     Zant = 0.
                     print('LoS at 0 cm')
                 elif pb5[: 3] == 'ON ' and pb6[: 3] == 'ON ':
-                    Zant = NaN
+                    Zant = np.nan
                     print('The LFS ECE radiometer was disconnected')
             else:
                 Zant = np.float(Zant[: 2]) * 1e-2
