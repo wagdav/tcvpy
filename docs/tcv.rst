@@ -1,6 +1,13 @@
 tcv package
 ===========
 
+Subpackages
+-----------
+
+.. toctree::
+
+    tcv.diag
+
 Submodules
 ----------
 
