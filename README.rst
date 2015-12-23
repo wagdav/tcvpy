@@ -1,8 +1,8 @@
 Introduction
 ============
 
-.. .. image:: https://img.shields.io/travis/wagdav/tcvpy.svg
-        :target: https://travis-ci.org/wagdav/tcvpy
+.. image:: https://img.shields.io/travis/wagdav/tcvpy.svg
+    :target: https://travis-ci.org/wagdav/tcvpy
 
 .. .. image:: https://img.shields.io/pypi/v/tcvpy.svg
         :target: https://pypi.python.org/pypi/tcvpy
