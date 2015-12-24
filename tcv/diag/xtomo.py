@@ -64,8 +64,8 @@ class XtomoCamera(object):
         # and now we normalize conveniently
         # FIXME: use xray's infrastructure to compute this
         gain, amp = XtomoCamera.gains(shot, camera, los=los)
-        data *= np.transpose(np.tile(gain, (data.values.shape[1], 1))
-                             / np.tile(amp, (data.values.shape[1], 1)))
+        data *= np.transpose(np.tile(gain, (data.values.shape[1], 1)) /
+                             np.tile(amp, (data.values.shape[1], 1)))
 
         data.attrs.update({'camera': camera})
 
