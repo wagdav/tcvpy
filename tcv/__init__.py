@@ -17,14 +17,14 @@ Here's a quick example how to get the plasma current in the latest experiment:
         query: tcv_ip()
         shot: 0
 """
-__author__ = 'David Wagner'
-__email__ = 'wagdav@gmail.com'
-__version__ = '0.2.0'
+from . mds import MDSConnection
+from . geom import tcvview
 
 __all__ = ['shot', 'tcvview']
 
-from . mds import MDSConnection
-from . geom import tcvview
+__author__ = 'David Wagner'
+__email__ = 'wagdav@gmail.com'
+__version__ = '0.2.0'
 
 
 def shot(shotnum=0, tree='tcv_shot', server='tcvdata.epfl.ch'):
