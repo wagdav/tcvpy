@@ -3,6 +3,7 @@ Introduction
 
 .. image:: https://img.shields.io/travis/wagdav/tcvpy.svg
     :target: https://travis-ci.org/wagdav/tcvpy
+    :alt: CI status
 
 .. image:: https://readthedocs.org/projects/tcvpy/badge/?version=latest
     :target: http://tcvpy.readthedocs.org/en/latest/?badge=latest
