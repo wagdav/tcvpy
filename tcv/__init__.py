@@ -52,3 +52,22 @@ def shot(shotnum=0, tree='tcv_shot', server='tcvdata.epfl.ch'):
         return MDSConnection(conn.shot, conn.tree, conn.server)
     else:
         return MDSConnection(shotnum, tree, server)
+
+
+# Proudly copied from urllib3.__init__
+def add_stderr_logger(level=logging.DEBUG):
+    """
+    Helper for quickly adding a StreamHandler to the logger. Useful for
+    debugging.
+
+    Returns the handler after adding it.
+    """
+    logger = logging.getLogger(__name__)
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    logger.addHandler(handler)
+    logger.setLevel(level)
+    logger.debug('Added a stderr logging handler to logger: %s', __name__)
+
+    return handler
