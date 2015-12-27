@@ -20,6 +20,12 @@ Here's a quick example how to get the plasma current in the latest experiment:
 from . mds import MDSConnection
 from . geom import tcvview
 
+
+# Set default logging handler to avoid "No handler found" warnings.
+import logging
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+
 __all__ = ['shot', 'tcvview']
 
 __author__ = 'David Wagner'
