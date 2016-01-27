@@ -5,12 +5,16 @@ XTOMO diagnostics data
 Written by Nicola Vianello
 """
 
+import logging
 import os  # for correctly handling the directory position
 from scipy import io  # this is needed to load the settings of xtomo
 import numpy as np
 
 import tcv  # this is the tcv main library component
 import xray  # this is needed as tdi save into an xray
+
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Top(object):
@@ -137,7 +141,7 @@ class Top(object):
         # correct for missing shots
         if shot >= 25102 and shot < 25933 and (36 in los):
             data.value[np.argmin(np.abs(los - 36)), :] = 0
-            print('Channel 36 was missing for this shot')
+            log.warn('Channel 36 was missing for this shot')
         elif shot >= 27127 and shot <= 28124:
             # missing channels, problem with cable 2, repaired by DF in Dec
             # 2004
@@ -145,16 +149,18 @@ class Top(object):
             for fault in missing:
                 if fault in los:
                     data.values[np.argmin(np.abs(los - fault)), :] = 0
-                    print('Channel '+str(fault)+' missing for this shot')
+                    log.warn('Channel %s missing for this shot', fault)
+
             if shot >= 27185 and (44 in los):  # one more channel missing !...
-                    data.values[np.argmin(np.abs(los-44)), :] = 0
-                    print('Channel 44 missing for this shot')
+                data.values[np.argmin(np.abs(los-44)), :] = 0
+                log.warn('Channel 44 missing for this shot')
+
         if shot >= 28219 and shot < 31446:
             missing = np.asarray([19, 21])
             for fault in missing:
                 if fault in los:
                     data.values[np.argmin(np.abs(los-fault)), :] = 0
-                    print('Channel ' + str(fault) + ' missing for this shot')
+                    log.warn('Channel %s missing for this shot', fault)
         # chose calibrate the signals
         # read the gain
         _calib, _gains = Top.gains(shot, los=los)
@@ -191,29 +197,30 @@ class Top(object):
         I = np.where(shot >= np.r_[20030, 23323, 26555, 27127, 29921, 30759,
                                    31446])[0][-1]
         if I == 0:
-            print('Detector gain dependence on the high voltage value not '
-                  'included in the signal calibration')
+            log.warn('Detector gain dependence on the high voltage value not '
+                     'included in the signal calibration')
             calib = Top.calibration_data('mpx_calib_first.mat')
             calib_coeff_t = np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 1:
-            print('Detector gain dependence on the high voltage value not '
-                  'included in the signal calibration')
+            log.warn('Detector gain dependence on the high voltage value not '
+                     'included in the signal calibration')
             calib = Top.calibration_data('mpx_calib_sept02.mat')
             calib_coeff_t = np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 2:
-            print('Detector gain dependence on the high voltage value not '
-                  'included in the signal calibration')
-            print('There were leaks in the top detector wire chamber for '
-                  '26554<shot<27128')
-            print('Calibration is not very meaningful')
+            log.warn('Detector gain dependence on the high voltage value not '
+                     'included in the signal calibration')
+            log.warn('There were leaks in the top detector wire chamber for '
+                     '26554<shot<27128')
+            log.warn('Calibration is not very meaningful')
             calib = Top.calibration_data('mpx_calib_may04.mat')
             calib_coeff_t = np.np.squeeze(calib['calib_coeff'])
             gainC[:] = 1
         if I == 3:
-            print('Same gain dependence on the high voltage value taken for '
-                  'each channel')
+            log.warn(
+                'Same gain dependence on the high voltage value taken for '
+                'each channel')
             calib = Top.calibration_data('mpx_calib_july04.mat')
             calib_coeff = np.squeeze(calib['calib_coeff'])
             R = np.squeeze(calib['R'])
@@ -225,8 +232,9 @@ class Top(object):
             gainC[:] = np.exp(np.interp(voltage, V, np.log(C)))
             gainR[:] = R
         if I == 4:
-            print('Same gain dependence on the high voltage value taken for '
-                  'each channel')
+            log.warn(
+                'Same gain dependence on the high voltage value taken for '
+                'each channel')
             calib = Top.calibration_data('mpx_calib_may05.mat')
             calib_coeff = np.np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
@@ -240,10 +248,12 @@ class Top(object):
             # In this case, the different behaviour of the wires is contained
             # in the matrix of gains.  The calibration coefficients are in a
             # vector: one value per wire, same value for all tensions.
-            print('Gain dependence on the high voltage value calibrated for '
-                  'each channel')
-            print('Leaks in the bottom detector, no relative calibration of '
-                  'the two detectors')
+            log.info(
+                'Gain dependence on the high voltage value calibrated for '
+                'each channel')
+            log.warn(
+                'Leaks in the bottom detector, no relative calibration of '
+                'the two detectors')
             calib = Top.calibration_data('mpx_calib_oct05.mat')
             calib_coeff = np.squeeze(calib['calib_coeff'])
             C = np.squeeze(calib['C'])
@@ -258,8 +268,9 @@ class Top(object):
             # In this case, the different behaviour of the wires is contained
             # in the matrix of calibration coefficients.  The gains are in a
             # vector: one value per tension, same value for all wires.
-            print('Gain dependence on the high voltage value calibrated for '
-                  'each channel')
+            log.info(
+                'Gain dependence on the high voltage value calibrated for '
+                'each channel')
             calib = Top.calibration_data('mpx_calib_dec05_bis.mat')
             calib_coeff_top = np.squeeze(calib['calib_coeff_top'])
             C_top_av = np.squeeze(calib['C_top_av'])
@@ -343,10 +354,12 @@ class Top(object):
 
             mode = mode1 * mode2 * mode3
             if conn.shot >= 24087 and mode != 64:
-                print('Random temporal gap (5 to 25 us) between the two or '
-                      'three MPX acquisition cards.')
-                print('Random temporal gap (0.1 to 0.2ms) between DTACQ and '
-                      'TCV.')
+                log.warn(
+                    'Random temporal gap (5 to 25 us) between the two or '
+                    'three MPX acquisition cards.')
+                log.warn(
+                    'Random temporal gap (0.1 to 0.2ms) between DTACQ and '
+                    'TCV.')
                 raise Warning('DTACQ not in mode 4')
 
     @staticmethod
@@ -356,16 +369,16 @@ class Top(object):
         """
 
         if shot > 34988:
-            print('Loading fast data after big opening')
+            log.info('Loading fast data after big opening')
             return False
 
         with tcv.shot(shot) as conn:
             try:
                 conn.tdi('{}selected:channel_{:03}'.format(card, channel))
-                print('Loading high frequency for old shot')
+                log.info('Loading high frequency for old shot')
                 return True
             except:
-                print('Loading low frequency for old shot')
+                log.info('Loading low frequency for old shot')
                 return False
 
     @staticmethod

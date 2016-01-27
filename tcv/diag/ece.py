@@ -1,10 +1,15 @@
 """
 ECE - Electron Cyclotron Emission
 """
+import logging
+
 import numpy as np
 import xray
 
 import tcv
+
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Lfs(object):
@@ -89,17 +94,18 @@ class Lfs(object):
                           .values)
                 if pb5[:3] == 'OFF' and pb6[:3] == 'OFF':
                     Zant = 0.21  # already transformed in floating
-                    print('LoS at 21 cm ... ')
+                    log.info('LoS at 21 cm')
                 elif pb5[: 3] == 'OFF' and pb6[: 3] == 'ON ':
                     Zant = 10
-                    print('3rd LoS was used ...  ')
+                    log.info('3rd LoS was used')
                 elif pb5[: 3] == 'ON ' and pb6[: 3] == 'OFF':
                     Zant = 0.
-                    print('LoS at 0 cm')
+                    log.info('LoS at 0 cm')
                 elif pb5[: 3] == 'ON ' and pb6[: 3] == 'ON ':
                     Zant = np.nan
-                    print('The LFS ECE radiometer was disconnected')
+                    log.info('The LFS ECE radiometer was disconnected')
             else:
                 Zant = np.float(Zant[: 2]) * 1e-2
+                log.info('LoS at %4.1f cm', Zant * 100)
 
         return Zant

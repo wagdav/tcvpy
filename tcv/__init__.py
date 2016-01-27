@@ -17,14 +17,20 @@ Here's a quick example how to get the plasma current in the latest experiment:
         query: tcv_ip()
         shot: 0
 """
-__author__ = 'David Wagner'
-__email__ = 'wagdav@gmail.com'
-__version__ = '0.2.0'
+from . mds import MDSConnection
+from . geom import tcvview
+
+
+# Set default logging handler to avoid "No handler found" warnings.
+import logging
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 
 __all__ = ['shot', 'tcvview']
 
-from . mds import MDSConnection
-from . geom import tcvview
+__author__ = 'David Wagner'
+__email__ = 'wagdav@gmail.com'
+__version__ = '0.2.0'
 
 
 def shot(shotnum=0, tree='tcv_shot', server='tcvdata.epfl.ch'):
@@ -46,3 +52,22 @@ def shot(shotnum=0, tree='tcv_shot', server='tcvdata.epfl.ch'):
         return MDSConnection(conn.shot, conn.tree, conn.server)
     else:
         return MDSConnection(shotnum, tree, server)
+
+
+# Proudly copied from urllib3.__init__
+def add_stderr_logger(level=logging.DEBUG):
+    """
+    Helper for quickly adding a StreamHandler to the logger. Useful for
+    debugging.
+
+    Returns the handler after adding it.
+    """
+    logger = logging.getLogger(__name__)
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    logger.addHandler(handler)
+    logger.setLevel(level)
+    logger.debug('Added a stderr logging handler to logger: %s', __name__)
+
+    return handler
