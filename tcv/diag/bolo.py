@@ -6,6 +6,7 @@ Written by Nicola Vianello
 
 import numpy
 import scipy
+from scipy import signal
 import tcv
 import xray
 
@@ -40,6 +41,7 @@ class Bolo(object):
         # collect the raw data
         raw = conn.tdi(r'\base::bolo:source', dims=('time', 'los'))
         # we lack the correct time bases so we load it
+        # and substitue in the XRAY data set
         time = conn.tdi(r'dim_of(\base::bolo:signals)').values
         raw.time.values = time
         # collect the gains
@@ -52,7 +54,8 @@ class Bolo(object):
         convfact = 9.4*0.0015*0.004
         # collect tau
         tau = conn.tdi(r'\base::bolo:tau')
-        # collect the geometry dictionary which will be used afterward. I will append it to the data as additional
+        # collect the geometry dictionary which will be used afterward.
+        # I will append it to the data as additional
         # dictionary
         geodict = Bolo.geo(shot)
         # we define the point when the offset removing mechanism is switched off
@@ -121,9 +124,12 @@ class Bolo(object):
         # detector poloidal size and toroidal size
         detsize = numpy.asarray([.0015, 0.004])
         # aperture size (poloidal, toroidal)
-        apesize = numpy.asarray([[0.0026*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0022*2, 0.0026*2],
-                                 [0.01*2, 0.008*2, 0.008*2, 0.008*2, 0.008*2, 0.008*2, 0.008*2, 0.01*2]])
-        out = dict(pinO_x = xpos, pinO_z = ypos, xdet = xdet, ydet = ydet, detsize = detsize, apsize = apesize)
+        apesize = numpy.asarray([[0.0026*2, 0.0022*2, 0.0022*2, 0.0022*2,
+                                  0.0022*2, 0.0022*2, 0.0022*2, 0.0026*2],
+                                 [0.01*2, 0.008*2, 0.008*2, 0.008*2,
+                                  0.008*2, 0.008*2, 0.008*2, 0.01*2]])
+        out = dict(pinO_x = xpos, pinO_z = ypos, xdet = xdet,
+                   ydet = ydet, detsize = detsize, apsize = apesize)
         return out
 
     @staticmethod
@@ -164,15 +170,25 @@ class Bolo(object):
         ys_right[:, -1] = dataC[:, -1]
         count = 0
         while count < knoise:
-            diffnorm = numpy.abs(numpy.diff(dataC, axis=-1)/numpy.diff(time)/numpy.max(numpy.abs(numpy.diff(
-                dataC[:, indNoise], axis=-1)/numpy.diff(time[indNoise]))[1:]))
+            diffnorm = numpy.abs(numpy.diff(dataC, axis=-1) / \
+                                 numpy.diff(time) / \
+                                 numpy.max(numpy.abs(numpy.diff(dataC[:, indNoise],
+                                                                axis=-1) /
+                                                     numpy.diff(time[indNoise]))[1:]))
+
             for k in numpy.arange(1, time.size-1, 1):
-                ys_left[:, k] = (ys_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3. + numpy.tanh(alevel*numpy.max([
-                    diffnorm[:, k-1], diffnorm[:, k]]))*(dataC[:, k]-(ys_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3.)
+                ys_left[:, k] = (ys_left[:, k-1] + dataC[:, k] + dataC[:, k+1])/3. + \
+                                numpy.tanh(alevel*numpy.max([diffnorm[:, k-1],
+                                                             diffnorm[:, k]]))* \
+                                                             (dataC[:, k]-
+                                                              (ys_left[:, k-1] + dataC[:, k] +
+                                                               dataC[:, k+1])/3.)
                 NB = - k
-                ys_right[:, NB] = (ys_right[:, NB+1] + dataC[:, NB] + dataC[:, NB-1])/3. + numpy.tanh(
-                    alevel*numpy.max([diffnorm[:, NB-1], diffnorm[:, NB]]))*(dataC[:, NB] -
-                                                                             (ys_right[:, NB+1] + dataC[:, NB] +
+                ys_right[:, NB] = (ys_right[:, NB+1] + dataC[:, NB] + dataC[:, NB-1])/3. + \
+                                  numpy.tanh(alevel*numpy.max([diffnorm[:, NB-1],
+                                                               diffnorm[:, NB]]))* \
+                                                               (dataC[:, NB] -
+                                                                (ys_right[:, NB+1] + dataC[:, NB] +
                                                                               dataC[:, NB-1])/3.)
             dataC[:, 1:] = (ys_left[:, 1:] + ys_right[:, 1:])/2.
             count += 1
@@ -206,10 +222,9 @@ class Bolo(object):
         -------
             (xray data set for signal, xray data set for derivative)
         """
-        from scipy import signal
         iwin = kwargs.get('iwin', 21)
         pol = kwargs.get('pol', 4)
-        g = [scipy.signal.savgol_coeffs(iwin, pol, i) for i in range(3)]
+        g = [signal.savgol_coeffs(iwin, pol, i) for i in range(3)]
         smoothed = numpy.asarray([numpy.convolve(g[0], data.values[:, m], mode='same') for m in range(
             data.values.shape[1])])
         dt = numpy.mean(numpy.diff(data.time.values))
