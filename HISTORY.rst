@@ -19,7 +19,7 @@ History
 
 * Add the DMPX diagnostic
 
-0.1.3 (2015-12-11)
+0.1.3 (2015-12-15)
 ------------------
 
-* Added the general diagnostic
+* Add the BOLO diagnostic
