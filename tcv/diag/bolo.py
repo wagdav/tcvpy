@@ -24,21 +24,35 @@ class Bolo(object):
         Return the calibrated signal of the BOLO diagnostic with
         the possibility to choose given LoS.
         So far it mimic only one of the filter used
-        Parameters
+
+        Parameters:
         ----------
-        shot: Shot number which will be used
-        offset: Boolean. If set it remove the offset before the shot.
-        Default is true
-        filter: String indicating the type of string used to load the data.
-        Available filters are 'gottardi' (local implementation, default)
-        or 'savitzky' (not as good as gottardi)
-        Returns
+        shot: int
+            Shot Number
+        offset: Boolean. Default True
+            If set it remove the offset before the shot.
+        filter: String 
+            Type of available filter for signal processing.
+            Available filters are\ ``bessel``\ or\ ``gottardi``\. 
+            Default is\ ``gottardi``\. 
+        chords: Int
+            Defining which chord to load. If not given collect all
+            the 64 channels
+
+        Returns:
         -------
-        Calibrated BOLO signals.
-        Examples
+        Calibrated BOLO signals. It includes also the
+        geometrical information of the signal, namely
+        pinO_x: Pin hole Radius location of the availabe cameras
+        pinO_z: Pin hole Vertical position of the available cameras
+        xdet : Radial positions of the LoS
+        ydet : Vertical positions of the LoS
+
+        Examples:
         -------
         >>> import tcv
-        >>> boloData = tcv.diag.Bolo.fromshot(50766)
+        >>> boloData = tcv.diag.Bolo.fromshot(50766, chords=[1, 4, 6])
+
         """
         conn = tcv.shot(shot)
         # collect the raw data
@@ -99,6 +113,10 @@ class Bolo(object):
         out.attrs['units'] = 'W/m^2'
         for key in geodict.keys():
             out.attrs[key] = geodict[key]
+
+        # now you can choose the appropriate LOS as an xray
+            
+
         return out
 
     @staticmethod
@@ -225,37 +243,6 @@ class Bolo(object):
 
         return ts, ys.transpose(), ds.transpose()
 
-    @staticmethod
-    def savitzkyfilt(data, **kwargs):
-        """
-        Gives as output the computed smoothed signal and smoothed
-        derivative with a Savitzky-Golay
-        Smoothed filtering
-        Parameters
-        ----------
-        data: this is the xray dataArray as computed from Connection method
-        kwargs:
-            iwin : window length (odd numbers). Default is 45
-            pol  : polynomial order used for the smoothing.
-        For the derivative it uses the pol+1
-
-        Returns
-        -------
-            (xray data set for signal, xray data set for derivative)
-        """
-        iwin = kwargs.get('iwin', 21)
-        pol = kwargs.get('pol', 4)
-        g = [signal.savgol_coeffs(iwin, pol, i) for i in range(3)]
-        smoothed = numpy.asarray([numpy.convolve(g[0],
-                                                 data.values[:, m],
-                                                 mode='same')
-                                  for m in range(data.values.shape[1])])
-        dt = numpy.mean(numpy.diff(data.time.values))
-        smoothedder = -numpy.asarray([numpy.convolve(g[1],
-                                                     data.values[:, m],
-                                                     mode='same')
-                                      for m in range(data.values.shape[1])])/dt
-        return smoothed.transpose(), smoothedder.transpose()
 
     @staticmethod
     def bessel(data, **kwargs):
