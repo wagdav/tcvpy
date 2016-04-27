@@ -7,6 +7,8 @@ Written by Nicola Vianello
 import numpy
 import scipy
 from scipy import signal
+from scipy import io
+import os
 import tcv
 import xray
 
@@ -19,7 +21,8 @@ class Bolo(object):
     """
 
     @staticmethod
-    def fromshot(shot, offset=True, filter='gottardi'):
+    def fromshot(shot, offset=True, filter='gottardi',
+                 Los=None):
         """
         Return the calibrated signal of the BOLO diagnostic with
         the possibility to choose given LoS.
@@ -31,27 +34,37 @@ class Bolo(object):
             Shot Number
         offset: Boolean. Default True
             If set it remove the offset before the shot.
-        filter: String 
+        filter: String
             Type of available filter for signal processing.
-            Available filters are\ ``bessel``\ or\ ``gottardi``\. 
-            Default is\ ``gottardi``\. 
-        chords: Int
+            Available filters are\ ``bessel``\ or\ ``gottardi``\.
+            Default is\ ``gottardi``\.x
+        Los: Int or list
             Defining which chord to load. If not given collect all
             the 64 channels
 
         Returns:
         -------
-        Calibrated BOLO signals. It includes also the
-        geometrical information of the signal, namely
-        pinO_x: Pin hole Radius location of the availabe cameras
-        pinO_z: Pin hole Vertical position of the available cameras
-        xdet : Radial positions of the LoS
-        ydet : Vertical positions of the LoS
-
+        Calibrated BOLO signals in the form of xray-DataArray
+        Attributes:
+        -------
+        shot: int
+            Shot Number
+        units: String
+            Unit of string
+        xchord: float 2D
+            LoS start and end radial position
+        ychord: float 2D
+            LoS start and end vertical position
+        angle: float
+            Cord angle
+        xPO: float
+            Radial position of the pinhole cameras
+        zPO: float
+            vertical position of the pinhole cameras
         Examples:
         -------
         >>> import tcv
-        >>> boloData = tcv.diag.Bolo.fromshot(50766, chords=[1, 4, 6])
+        >>> boloData = tcv.diag.Bolo.fromshot(50766, Los=[1, 4, 6])
 
         """
         conn = tcv.shot(shot)
@@ -74,7 +87,7 @@ class Bolo(object):
         # collect the geometry dictionary which will be used afterward.
         # I will append it to the data as additional
         # dictionary
-        geodict = Bolo.geo(shot)
+        geodict = Bolo.geo(shot, los=Los)
         # we define the point when the offset removing
         # mechanism is switched off
         start = conn.tdi('timing("401")').values
@@ -109,18 +122,21 @@ class Bolo(object):
             out.coords['time'] = time
         out.coords['los'] = numpy.linspace(1, 64, 64, dtype='int')
         # adding the attributes
-        out.attrs['shot'] = 'shot'
+        out.attrs['shot'] = shot
         out.attrs['units'] = 'W/m^2'
+        # non in case it is called with the LOS we select the appropriate
+        # ones. The Geodictionary is already limited
         for key in geodict.keys():
             out.attrs[key] = geodict[key]
-
-        # now you can choose the appropriate LOS as an xray
-            
-
-        return out
+        if Los is None:
+            return out
+        else:
+            print ' -- selecting chords -- '
+            out2 = out.sel(los=Los)
+            return out2
 
     @staticmethod
-    def geo(shot):
+    def geo(shot, los=None):
         """
 
         Parameters
@@ -133,32 +149,33 @@ class Bolo(object):
         information for the BOLO diagnostic
 
         """
-
-        conn = tcv.shot(shot)
-        # angle of pinhole surface normal
-        vangle_cp = numpy.repeat(scipy.pi, 8)
-        vangle_cp[0] *= -1./2.
-        vangle_cp[-1] *= 1/2.
-
-        # radial position of the pinholes
+        # the position of the pin-hole cameras
+        # are given
         xpos = numpy.asarray([0.88, 1.235, 1.235, 1.235,
                               1.235, 1.235, 1.235, 0.88])
-        # vertical position of the pinholes
-        ypos = numpy.asarray([.815, 0.455, 0.455, -.0025,
+        ypos = numpy.asarray([.815, 0.455, 0.455, -0.0025,
                               -.0025, -0.46, -0.46, -0.815])
-        # provide now the exact positions of the 64 LoS
-        xdet = conn.tdi(r'\base::bolo:radial_pos').values
-        ydet = conn.tdi(r'\base::bolo:z_pos').values
-        # detector poloidal size and toroidal size
-        detsize = numpy.asarray([.0015, 0.004])
-        # aperture size (poloidal, toroidal)
-        apesize = numpy.asarray([[0.0026*2, 0.0022*2, 0.0022*2, 0.0022*2,
-                                  0.0022*2, 0.0022*2, 0.0022*2, 0.0026*2],
-                                 [0.01*2, 0.008*2, 0.008*2, 0.008*2,
-                                  0.008*2, 0.008*2, 0.008*2, 0.01*2]])
-        out = dict([('pinO_x', xpos), ('pinO_z', ypos), ('xdet', xdet),
-                    ('ydet', ydet), ('detsize', detsize),
-                    ('apsize', apesize)])
+        base = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'bolocalib')
+        geoData = io.loadmat(os.path.join(base,
+                                          'geobolo.mat'))
+        xchord = geoData['xchord']
+        ychord = geoData['ychord']
+        angle = geoData['angle'].ravel()
+        if los is not None:
+            _idxLos = numpy.atleast_1d(los)-1
+            _idxPO = numpy.unique(_idxLos/8)
+            xpos = xpos[_idxPO]
+            ypos = ypos[_idxPO]
+            xchord = xchord[:, _idxLos]
+            ychord = ychord[:, _idxLos]
+            angle = angle[_idxLos]
+
+        out = dict([('xPO', xpos), ('zPO', ypos),
+                    ('xchord', xchord),
+                    ('ychord', ychord),
+                    ('angle', angle)])
         return out
 
     @staticmethod
@@ -243,14 +260,12 @@ class Bolo(object):
 
         return ts, ys.transpose(), ds.transpose()
 
-
     @staticmethod
     def bessel(data, **kwargs):
         """
         Implement a Bessel type analog filter
         ----------
         data: xarray DataSet as obtained from a TDI call
-
 
         Returns
         -------
