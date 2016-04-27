@@ -111,8 +111,10 @@ class Bolo(object):
 
         dynVolt = sm + smd * tau.values.reshape(1, tau.shape[0])
         data = dynVolt / (gains.values.reshape(1, gains.shape[0]) *
-                          calibration.values.reshape(1, calibration.shape[0]) *
-                          etendue.values.reshape(1, etendue.shape[0]) * convfact)
+                          calibration.values.reshape(1,
+                                                     calibration.shape[0]) *
+                          etendue.values.reshape(1,
+                                                 etendue.shape[0]) * convfact)
         # transform data on xray data source and adding geo as a dictionary
         out = xray.DataArray(data, dims=('time', 'los'))
         if filter == 'gottardi':

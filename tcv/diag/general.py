@@ -248,7 +248,8 @@ class General(object):
     @staticmethod
     def delta(shot, plt=False, edge=False, q95=True):
         """
-        Load Triangularity (at 95% of the poloidal flux [default] or at the edge)
+        Load Triangularity (at 95% of the poloidal flux
+        [default] or at the edge)
         Parameters
         ----------
         shot : shot number
