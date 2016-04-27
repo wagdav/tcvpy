@@ -7,6 +7,8 @@ Written by Nicola Vianello
 import numpy
 import scipy
 from scipy import signal
+from scipy import io
+import os
 import tcv
 import xray
 
@@ -19,26 +21,51 @@ class Bolo(object):
     """
 
     @staticmethod
-    def fromshot(shot, offset=True, filter='gottardi'):
+    def fromshot(shot, offset=True, filter='gottardi',
+                 Los=None):
         """
         Return the calibrated signal of the BOLO diagnostic with
         the possibility to choose given LoS.
         So far it mimic only one of the filter used
-        Parameters
+
+        Parameters:
         ----------
-        shot: Shot number which will be used
-        offset: Boolean. If set it remove the offset before the shot.
-        Default is true
-        filter: String indicating the type of string used to load the data.
-        Available filters are 'gottardi' (local implementation, default)
-        or 'savitzky' (not as good as gottardi)
-        Returns
+        shot: int
+            Shot Number
+        offset: Boolean. Default True
+            If set it remove the offset before the shot.
+        filter: String
+            Type of available filter for signal processing.
+            Available filters are\ ``bessel``\ or\ ``gottardi``\.
+            Default is\ ``gottardi``\.x
+        Los: Int or list
+            Defining which chord to load. If not given collect all
+            the 64 channels
+
+        Returns:
         -------
-        Calibrated BOLO signals.
-        Examples
+        Calibrated BOLO signals in the form of xray-DataArray
+        Attributes:
+        -------
+        shot: int
+            Shot Number
+        units: String
+            Unit of string
+        xchord: float 2D
+            LoS start and end radial position
+        ychord: float 2D
+            LoS start and end vertical position
+        angle: float
+            Cord angle
+        xPO: float
+            Radial position of the pinhole cameras
+        zPO: float
+            vertical position of the pinhole cameras
+        Examples:
         -------
         >>> import tcv
-        >>> boloData = tcv.diag.Bolo.fromshot(50766)
+        >>> boloData = tcv.diag.Bolo.fromshot(50766, Los=[1, 4, 6])
+
         """
         conn = tcv.shot(shot)
         # collect the raw data
@@ -60,7 +87,7 @@ class Bolo(object):
         # collect the geometry dictionary which will be used afterward.
         # I will append it to the data as additional
         # dictionary
-        geodict = Bolo.geo(shot)
+        geodict = Bolo.geo(shot, los=Los)
         # we define the point when the offset removing
         # mechanism is switched off
         start = conn.tdi('timing("401")').values
@@ -95,14 +122,21 @@ class Bolo(object):
             out.coords['time'] = time
         out.coords['los'] = numpy.linspace(1, 64, 64, dtype='int')
         # adding the attributes
-        out.attrs['shot'] = 'shot'
+        out.attrs['shot'] = shot
         out.attrs['units'] = 'W/m^2'
+        # non in case it is called with the LOS we select the appropriate
+        # ones. The Geodictionary is already limited
         for key in geodict.keys():
             out.attrs[key] = geodict[key]
-        return out
+        if Los is None:
+            return out
+        else:
+            print ' -- selecting chords -- '
+            out2 = out.sel(los=Los)
+            return out2
 
     @staticmethod
-    def geo(shot):
+    def geo(shot, los=None):
         """
 
         Parameters
@@ -115,32 +149,33 @@ class Bolo(object):
         information for the BOLO diagnostic
 
         """
-
-        conn = tcv.shot(shot)
-        # angle of pinhole surface normal
-        vangle_cp = numpy.repeat(scipy.pi, 8)
-        vangle_cp[0] *= -1./2.
-        vangle_cp[-1] *= 1/2.
-
-        # radial position of the pinholes
+        # the position of the pin-hole cameras
+        # are given
         xpos = numpy.asarray([0.88, 1.235, 1.235, 1.235,
                               1.235, 1.235, 1.235, 0.88])
-        # vertical position of the pinholes
-        ypos = numpy.asarray([.815, 0.455, 0.455, -.0025,
+        ypos = numpy.asarray([.815, 0.455, 0.455, -0.0025,
                               -.0025, -0.46, -0.46, -0.815])
-        # provide now the exact positions of the 64 LoS
-        xdet = conn.tdi(r'\base::bolo:radial_pos').values
-        ydet = conn.tdi(r'\base::bolo:z_pos').values
-        # detector poloidal size and toroidal size
-        detsize = numpy.asarray([.0015, 0.004])
-        # aperture size (poloidal, toroidal)
-        apesize = numpy.asarray([[0.0026*2, 0.0022*2, 0.0022*2, 0.0022*2,
-                                  0.0022*2, 0.0022*2, 0.0022*2, 0.0026*2],
-                                 [0.01*2, 0.008*2, 0.008*2, 0.008*2,
-                                  0.008*2, 0.008*2, 0.008*2, 0.01*2]])
-        out = dict([('pinO_x', xpos), ('pinO_z', ypos), ('xdet', xdet),
-                    ('ydet', ydet), ('detsize', detsize),
-                    ('apsize', apesize)])
+        base = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'bolocalib')
+        geoData = io.loadmat(os.path.join(base,
+                                          'geobolo.mat'))
+        xchord = geoData['xchord']
+        ychord = geoData['ychord']
+        angle = geoData['angle'].ravel()
+        if los is not None:
+            _idxLos = numpy.atleast_1d(los)-1
+            _idxPO = numpy.unique(_idxLos/8)
+            xpos = xpos[_idxPO]
+            ypos = ypos[_idxPO]
+            xchord = xchord[:, _idxLos]
+            ychord = ychord[:, _idxLos]
+            angle = angle[_idxLos]
+
+        out = dict([('xPO', xpos), ('zPO', ypos),
+                    ('xchord', xchord),
+                    ('ychord', ychord),
+                    ('angle', angle)])
         return out
 
     @staticmethod
@@ -226,44 +261,11 @@ class Bolo(object):
         return ts, ys.transpose(), ds.transpose()
 
     @staticmethod
-    def savitzkyfilt(data, **kwargs):
-        """
-        Gives as output the computed smoothed signal and smoothed
-        derivative with a Savitzky-Golay
-        Smoothed filtering
-        Parameters
-        ----------
-        data: this is the xray dataArray as computed from Connection method
-        kwargs:
-            iwin : window length (odd numbers). Default is 45
-            pol  : polynomial order used for the smoothing.
-        For the derivative it uses the pol+1
-
-        Returns
-        -------
-            (xray data set for signal, xray data set for derivative)
-        """
-        iwin = kwargs.get('iwin', 21)
-        pol = kwargs.get('pol', 4)
-        g = [signal.savgol_coeffs(iwin, pol, i) for i in range(3)]
-        smoothed = numpy.asarray([numpy.convolve(g[0],
-                                                 data.values[:, m],
-                                                 mode='same')
-                                  for m in range(data.values.shape[1])])
-        dt = numpy.mean(numpy.diff(data.time.values))
-        smoothedder = -numpy.asarray([numpy.convolve(g[1],
-                                                     data.values[:, m],
-                                                     mode='same')
-                                      for m in range(data.values.shape[1])])/dt
-        return smoothed.transpose(), smoothedder.transpose()
-
-    @staticmethod
     def bessel(data, **kwargs):
         """
         Implement a Bessel type analog filter
         ----------
         data: xarray DataSet as obtained from a TDI call
-
 
         Returns
         -------
