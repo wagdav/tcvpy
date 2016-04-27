@@ -1,6 +1,8 @@
 # CLASS containing the set of fromtree to access some general
-# time traces like current, bt, elongation, triangularity, line-average density
-# central density from thomson, central temperature from thomson, central temperature from
+# time traces like current, bt, elongation, triangularity,
+# line-average density
+# central density from thomson, central temperature from thomson,
+# central temperature from
 # double filter
 import tcv
 import matplotlib as mpl
@@ -8,7 +10,8 @@ import matplotlib as mpl
 
 class General(object):
     """
-    Python class to access some general signals for TCV. Implemented method (as @classmethod) are
+    Python class to access some general signals for TCV.
+    Implemented method (as @classmethod) are
     ip : read plasma current
     bphi : read the magnetic field on axis
     neline: Line integrated density
@@ -27,7 +30,8 @@ class General(object):
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
 
         Returns
         -------
@@ -44,10 +48,10 @@ class General(object):
             fig = mpl.pylab.figure(figsize=(6, 5))
             ax = fig.add_subplot(111)
             if data.values.shape[0] > 1:
-                ax.plot(data[data.dims[0]].values, data.values/1e3)
+                ax.plot(data[data.dims[0]].values, data.values / 1e3)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0, :]/1e3)
-            ax.set_title(r'Shot # '+str(shot))
+                ax.plot(data[data.dims[0]].values, data.values[0, :] / 1e3)
+            ax.set_title(r'Shot # ' + str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'I$_p$ [kA]')
         return data
@@ -59,7 +63,8 @@ class General(object):
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
 
         Returns
         -------
@@ -80,7 +85,7 @@ class General(object):
                 ax.plot(data[data.dims[0]].values, data.values)
             else:
                 ax.plot(data[data.dims[0]].values, data.values[0, :])
-            ax.set_title(r'Shot # '+str(shot))
+            ax.set_title(r'Shot # ' + str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'B$_{\phi}$ [T]')
 
@@ -93,11 +98,13 @@ class General(object):
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
 
         Returns
         -------
-        xray Data set with the Line Integrated Density field time traces
+        xray Data set with the Line Integrated Density
+        field time traces
 
         Examples
         -------
@@ -110,10 +117,10 @@ class General(object):
             fig = mpl.pylab.figure(figsize=(6, 5))
             ax = fig.add_subplot(111)
             if data.values.shape[0] > 1:
-                ax.plot(data[data.dims[0]].values, data.values/1e19)
+                ax.plot(data[data.dims[0]].values, data.values / 1e19)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0, :]/1e19)
-            ax.set_title(r'Shot # '+str(shot))
+                ax.plot(data[data.dims[0]].values, data.values[0, :] / 1e19)
+            ax.set_title(r'Shot # ' + str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'n$_{e}$ Line Integrated [10$^{19}$ fringes]')
         return data
@@ -125,7 +132,8 @@ class General(object):
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
 
         Returns
         -------
@@ -142,26 +150,29 @@ class General(object):
             fig = mpl.pylab.figure(figsize=(6, 5))
             ax = fig.add_subplot(111)
             if data.values.shape[0] > 1:
-                ax.plot(data[data.dims[0]].values, data.values/1e19)
+                ax.plot(data[data.dims[0]].values, data.values / 1e19)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0, :]/1e19)
-            ax.set_title(r'Shot # '+str(shot))
+                ax.plot(data[data.dims[0]].values, data.values[0, :] / 1e19)
+            ax.set_title(r'Shot # ' + str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(r'n$_{e}$ Line Average [10$^{19}$ m$^{-3}$]')
         return data
 
     @staticmethod
-    def q(shot, plt=False, edge = False):
+    def q(shot, plt=False, edge=False):
         """
         Load q (q95 or qedge) time trace
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
-        edge: Boolean (default is False). If it is True it load the qedge rather than the q95
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
+        edge: Boolean (default is False). If it is True it
+              loads the qedge rather than the q95
         Returns
         -------
-        xray Data set with the q computed as default at 95% of poloidal Flux. If edge is se to True
+        xray Data set with the q computed as default at 95% of
+        poloidal Flux. If edge is se to True
         it load the edge value
 
         Examples
@@ -185,25 +196,27 @@ class General(object):
             if data.values.shape[0] > 1:
                 ax.plot(data[data.dims[0]].values, data.values)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0,:])
-            ax.set_title(r'Shot # '+str(shot))
+                ax.plot(data[data.dims[0]].values, data.values[0, :])
+            ax.set_title(r'Shot # ' + str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(axlabel)
         return data
 
     @staticmethod
-    def kappa(shot, plt=False, edge = False):
+    def kappa(shot, plt=False, edge=False):
         """
         Load the elongation (at 95% of the poloidal flux or edge)
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
         edge : Boolean. If true it loads the valued at the edge
         Returns
         -------
-        xray Data set with the elongation computed as default at 95% of poloidal Flux. If edge is se to True
-        it load the edge value
+        xray Data set with the elongation computed as default at
+        95% of poloidal Flux. If edge is se to True
+        it loads the edge value
 
         Examples
         -------
@@ -216,7 +229,7 @@ class General(object):
             axlabel = r'$\varepsilon_{edge}$'
         else:
             Str = r'\results::kappa_95'
-            axlabel=r'$\varepsilon_{95}$'
+            axlabel = r'$\varepsilon_{95}$'
 
         data = tcv.shot(shot).tdi(Str)
 
@@ -226,24 +239,27 @@ class General(object):
             if data.values.shape[0] > 1:
                 ax.plot(data[data.dims[0]].values, data.values)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0,:])
-            ax.set_title(r'Shot # '+str(shot))
+                ax.plot(data[data.dims[0]].values, data.values[0, :])
+            ax.set_title(r'Shot # ' + str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(axlabel)
         return data
 
     @staticmethod
-    def delta(shot, plt=False, edge = False, q95 = True):
+    def delta(shot, plt=False, edge=False, q95=True):
         """
         Load Triangularity (at 95% of the poloidal flux [default] or at the edge)
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
-        edge : Boolean (default is False). If True it loads value at the edge
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
+        edge : Boolean (default is False). If True it
+               loads value at the edge
         Returns
         -------
-        xray Data set with the triangularity computed as default at 95% of poloidal Flux. If edge is se to True
+        xray Data set with the triangularity computed as default
+        at 95% of poloidal Flux. If edge is se to True
         it load the edge value
 
         Examples
@@ -253,12 +269,12 @@ class General(object):
         >>> deltaEdge = General.delta(50882, plt=True, edge=True)
         """
         if edge:
-            q95 == False
+            q95 = False
             Str = r'\results::delta_edge'
             axlabel = r'$\delta_{edge}$'
         elif q95:
             Str = r'\results::delta_95'
-            axlabel=r'$\delta_{95}$'
+            axlabel = r'$\delta_{95}$'
 
         data = tcv.shot(shot).tdi(Str)
 
@@ -268,23 +284,25 @@ class General(object):
             if data.values.shape[0] > 1:
                 ax.plot(data[data.dims[0]].values, data.values)
             else:
-                ax.plot(data[data.dims[0]].values, data.values[0,:])
-            ax.set_title(r'Shot # '+str(shot))
+                ax.plot(data[data.dims[0]].values, data.values[0, :])
+            ax.set_title(r'Shot # ' + str(shot))
             ax.set_xlabel(r't [s]')
             ax.set_ylabel(axlabel)
         return data
 
     @staticmethod
-    def tedf(shot, plt=False, edge = False, q95 = True):
+    def tedf(shot, plt=False, edge=False, q95=True):
         """
         Load Central temperature from Double Filter technique
         Parameters
         ----------
         shot : shot number
-        plt  : Boolean (default is False). If True it plot the current time traces
+        plt  : Boolean (default is False). If True it
+               plots the current time traces
         Returns
         -------
-        xray Data set with the central temperature. Remember that there are 6 values (for different foil couples)
+        xray Data set with the central temperature.
+        Remember that there are 6 values (for different foil couples)
         It is generally convenient to use first one
 
         Examples
@@ -299,13 +317,12 @@ class General(object):
                 fig = mpl.pylab.figure(figsize=(6, 5))
                 ax = fig.add_subplot(111)
                 if data.values.shape[0] > 1:
-                    ax.plot(data[data.dims[0]].values, data.values/1e3)
+                    ax.plot(data[data.dims[0]].values, data.values / 1e3)
                 else:
-                    ax.plot(data[data.dims[0]].values, data.values[0,:]/1e3)
-                ax.set_title(r'Shot # '+str(shot))
+                    ax.plot(data[data.dims[0]].values, data.values[0, :] / 1e3)
+                ax.set_title(r'Shot # ' + str(shot))
                 ax.set_xlabel(r't [s]')
                 ax.set_ylabel(r'T_e [keV]')
             return data
         except:
             print 'No data stored for Xte for this shot'
-

@@ -5,7 +5,6 @@ Written by Nicola Vianello
 """
 
 import numpy
-import scipy
 from scipy import signal
 from scipy import io
 import os
@@ -81,7 +80,7 @@ class Bolo(object):
         # collect the etendue
         etendue = conn.tdi(r'\base::bolo:geom_fact')
         # define the conversion factor
-        convfact = 9.4*0.0015*0.004
+        convfact = 9.4 * 0.0015 * 0.004
         # collect tau
         tau = conn.tdi(r'\base::bolo:tau')
         # collect the geometry dictionary which will be used afterward.
@@ -93,7 +92,7 @@ class Bolo(object):
         start = conn.tdi('timing("401")').values
         if start < 0 and offset:
             raw -= raw.where(((raw.time < 0) &
-                              (raw.time > 0.7*start))).mean(dim='time')
+                              (raw.time > 0.7 * start))).mean(dim='time')
             print ' -- Offset removal -- '
         else:
             print ' -- Offset not removed  --'
@@ -110,10 +109,10 @@ class Bolo(object):
             filter = 'gottardi'
             ts, sm, smd = Bolo.gottardifilt(raw)
 
-        dynVolt = sm + smd*tau.values.reshape(1, tau.shape[0])
+        dynVolt = sm + smd * tau.values.reshape(1, tau.shape[0])
         data = dynVolt / (gains.values.reshape(1, gains.shape[0]) *
                           calibration.values.reshape(1, calibration.shape[0]) *
-                          etendue.values.reshape(1, etendue.shape[0])*convfact)
+                          etendue.values.reshape(1, etendue.shape[0]) * convfact)
         # transform data on xray data source and adding geo as a dictionary
         out = xray.DataArray(data, dims=('time', 'los'))
         if filter == 'gottardi':
@@ -164,8 +163,8 @@ class Bolo(object):
         ychord = geoData['ychord']
         angle = geoData['angle'].ravel()
         if los is not None:
-            _idxLos = numpy.atleast_1d(los)-1
-            _idxPO = numpy.unique(_idxLos/8)
+            _idxLos = numpy.atleast_1d(los) - 1
+            _idxPO = numpy.unique(_idxLos / 8)
             xpos = xpos[_idxPO]
             ypos = ypos[_idxPO]
             xchord = xchord[:, _idxLos]
@@ -211,7 +210,7 @@ class Bolo(object):
         # create a copy of the signal changing the first and last point
         dataC = data.values.transpose().copy()
         dataC[:, 0] = dataC[:, :ibave].mean()
-        dataC[:, -1] = dataC[:, (dataC.shape[1]-ieave+1):-1].mean()
+        dataC[:, -1] = dataC[:, (dataC.shape[1] - ieave + 1):-1].mean()
         # copy of the data to perform smoothing
         ys_left = numpy.zeros((dataC.shape[0], dataC.shape[1]))
         ys_right = numpy.zeros((dataC.shape[0], dataC.shape[1]))
@@ -226,36 +225,35 @@ class Bolo(object):
                                                 axis=-1) /
                                      numpy.diff(time[indNoise]))[1:]))
 
-            for k in numpy.arange(1, time.size-1, 1):
-                ys_left[:, k] = (ys_left[:, k-1] +
-                                 dataC[:, k] + dataC[:, k+1])/3. + \
-                                 numpy.tanh(alevel *
-                                            numpy.max([diffnorm[:, k-1],
-                                                       diffnorm[:, k]])) * \
-                                (dataC[:, k] - (ys_left[:, k-1] +
-                                                dataC[:, k] +
-                                                dataC[:, k+1])/3.)
+            for k in numpy.arange(1, time.size - 1, 1):
+                ys_left[:, k] = (ys_left[:, k - 1] +
+                                 dataC[:, k] + dataC[:, k + 1]) / 3. + \
+                    numpy.tanh(alevel *
+                               numpy.max([diffnorm[:, k - 1],
+                                          diffnorm[:, k]])) * \
+                    (dataC[:, k] - (ys_left[:, k - 1] +
+                                    dataC[:, k] +
+                                    dataC[:, k + 1]) / 3.)
                 NB = - k
-                ys_right[:, NB] = (ys_right[:, NB+1] +
-                                   dataC[:, NB] + dataC[:, NB-1])/3. + \
-                                   numpy.tanh(alevel *
-                                              numpy.max([diffnorm[:, NB-1],
-                                                        diffnorm[:, NB]])) * \
-                                  (dataC[:, NB] -
-                                   (ys_right[:, NB+1] + dataC[:, NB] +
-                                    dataC[:, NB-1])/3.)
-            dataC[:, 1:] = (ys_left[:, 1:] + ys_right[:, 1:])/2.
+                ys_right[:, NB] = (ys_right[:, NB + 1] +
+                                   dataC[:, NB] + dataC[:, NB - 1]) / 3. + \
+                    numpy.tanh(alevel *
+                               numpy.max([diffnorm[:, NB - 1],
+                                          diffnorm[:, NB]])) * \
+                    (dataC[:, NB] - (ys_right[:, NB + 1] + dataC[:, NB] +
+                                     dataC[:, NB - 1]) / 3.)
+            dataC[:, 1:] = (ys_left[:, 1:] + ys_right[:, 1:]) / 2.
             count += 1
         # redefine the time basis
         ts = numpy.zeros(dataC.shape[1])
-        ts[:-1] = 0.5*(time[1:] + time[:-1])
-        ts[-1] = ts[-2] + (ts[-2]-ts[-3])
+        ts[:-1] = 0.5 * (time[1:] + time[:-1])
+        ts[-1] = ts[-2] + (ts[-2] - ts[-3])
         # define the output smoothed signal
-        ys = 0.5*(dataC + numpy.roll(dataC, 1, axis=-1))
+        ys = 0.5 * (dataC + numpy.roll(dataC, 1, axis=-1))
         ys[:, -1] = ys[:, -2]
         # define the output smoothed derivative
         ds = numpy.zeros((dataC.shape[0], dataC.shape[1]))
-        ds[:, :-1] = numpy.diff(dataC, axis=-1)/numpy.diff(time)
+        ds[:, :-1] = numpy.diff(dataC, axis=-1) / numpy.diff(time)
         ds[:, -1] = 0
 
         return ts, ys.transpose(), ds.transpose()
@@ -272,11 +270,12 @@ class Bolo(object):
         Smoothed array and time derivative
         """
         time = data.time.values
-        dt = (time.max()-time.min())/(time.size-1)
-        Ny = numpy.round(1./((time.max()-time.min())/(time.size-1)))/2
+        dt = (time.max() - time.min()) / (time.size - 1)
+        Ny = numpy.round(
+            1. / ((time.max() - time.min()) / (time.size - 1))) / 2
         # implement an appropriate Bessel analog filter
         fcutoff = kwargs.get('fcutoff', 30.)
-        _Wn = fcutoff/Ny
+        _Wn = fcutoff / Ny
         b, a = signal.bessel(4, _Wn)
         # create a copy of the signals
         sm = data.values.transpose().copy()
