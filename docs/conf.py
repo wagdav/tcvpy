@@ -29,7 +29,7 @@ class Mock(MagicMock):
 
 MOCK_MODULES = [
     'matplotlib', 'matplotlib.pyplot', 'matplotlib.ticker', 'matplotlib.path',
-    'matplotlib.patches', 'pandas', 'xray', 'MDSplus', 'scipy', 'scipy.io'
+    'matplotlib.patches', 'pandas', 'xarray', 'MDSplus', 'scipy', 'scipy.io'
 ]
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 

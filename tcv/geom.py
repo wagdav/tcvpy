@@ -43,7 +43,7 @@ class StaticParameters(object):
 
         vessel = {}
         with tcv.shot(shotnum) as conn:
-            for key, query in cls._vessel_nodes().iteritems():
+            for key, query in cls._vessel_nodes().items():
                 vessel[key] = conn.tdi(query).values
 
         tiles = {}
@@ -114,21 +114,21 @@ class VesselDrawer(object):
         coords = self.get_coordinates('vessel')
         vertices = [r for r in zip(coords['R_in'], coords['Z_in'])]
         vertices.append(vertices[0])
-        codes = [Path.MOVETO] + (len(vertices)-1) * [Path.LINETO]
+        codes = [Path.MOVETO] + (len(vertices) - 1) * [Path.LINETO]
         return vertices, codes
 
     def _outside(self):
         coords = self.get_coordinates('vessel')
         vertices = [r for r in zip(coords['R_out'], coords['Z_out'])][::-1]
         vertices.append(vertices[0])
-        codes = [Path.MOVETO] + (len(vertices)-1) * [Path.LINETO]
+        codes = [Path.MOVETO] + (len(vertices) - 1) * [Path.LINETO]
         return vertices, codes
 
     def _tiles(self):
         coords = self.get_coordinates('tiles')
         vertices = [r for r in zip(coords['R'], coords['Z'])][::-1]
         vertices.append(vertices[0])
-        codes = [Path.MOVETO] + (len(vertices)-1) * [Path.LINETO]
+        codes = [Path.MOVETO] + (len(vertices) - 1) * [Path.LINETO]
         return vertices, codes
 
     def _get_vessel_patch(self):
@@ -319,10 +319,10 @@ class PortsDrawer(object):
     def _vertices_codes(self, x1, y1, x2, y2):
         vertices1 = [r for r in zip(x1, y1)]
         vertices1.append(vertices1[0])
-        codes1 = [Path.MOVETO] + (len(vertices1)-1) * [Path.LINETO]
+        codes1 = [Path.MOVETO] + (len(vertices1) - 1) * [Path.LINETO]
         vertices2 = [r for r in zip(x2, y2)]
         vertices2.append(vertices2[0])
-        codes2 = [Path.MOVETO] + (len(vertices2)-1) * [Path.LINETO]
+        codes2 = [Path.MOVETO] + (len(vertices2) - 1) * [Path.LINETO]
 
         vertices = vertices1 + vertices2
         codes = codes1 + codes2

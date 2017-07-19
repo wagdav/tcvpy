@@ -7,7 +7,7 @@ Here's a quick example how to get the plasma current in the latest experiment:
     >>> import tcv
     >>> conn = tcv.shot()
     >>> ip = conn.tdi(r'tcv_ip()')
-    <xray.DataArray 'tcv_ip()' (dim_0: 16384)>
+    <xarray.DataArray 'tcv_ip()' (dim_0: 16384)>
     array([  2229.64526367,   2116.44580078,   2209.29492188, ...,
            -23054.24414062, -22913.67578125, -23049.359375  ], dtype=float32)
     Coordinates:

@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 import scipy.io
-import xray
+import xarray
 
 import tcv
 
@@ -55,14 +55,14 @@ class XtomoCamera(object):
             for channel in XtomoCamera.channels(shot, camera, los=los):
                 values.append(conn.tdi(channel, dims='time'))
 
-        data = xray.concat(values, dim='los')
+        data = xarray.concat(values, dim='los')
         data['los'] = los
 
         # Remove the offset before the shot
         data -= data.where(data.time < 0).mean(dim='time')
 
         # and now we normalize conveniently
-        # FIXME: use xray's infrastructure to compute this
+        # FIXME: use xarray's infrastructure to compute this
         gain, amp = XtomoCamera.gains(shot, camera, los=los)
         data *= np.transpose(np.tile(gain, (data.values.shape[1], 1)) /
                              np.tile(amp, (data.values.shape[1], 1)))

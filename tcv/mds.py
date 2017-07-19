@@ -4,7 +4,7 @@ from collections import OrderedDict
 from itertools import cycle
 
 import MDSplus as mds
-import xray
+import xarray
 
 from .datasource import DataSource
 
@@ -52,12 +52,12 @@ class MDSConnection(DataSource):
             are taken from the MDS tree (if possible) and otherwise default to
             ``['dim_0', ... 'dim_n']``.
         """
-        return self._as_xray(cmd, *args, **kwargs)
+        return self._as_xarray(cmd, *args, **kwargs)
 
     def close(self):
         self._conn.closeTree(self.tree, self.shot)
 
-    def _as_xray(self, query, *args, **kwargs):
+    def _as_xarray(self, query, *args, **kwargs):
         """ Read one signal through the connection """
 
         # arrays are returned in column-major (Fortran) order so we use .T
@@ -73,7 +73,7 @@ class MDSConnection(DataSource):
             dims = cycle([''])
 
         coords = OrderedDict()
-        for i, dim_name in zip(xrange(MDSConnection._MAX_DIMS), dims):
+        for i, dim_name in zip(range(MDSConnection._MAX_DIMS), dims):
             try:
                 coords.update(self._get_dim(i, query, dim_name, *args))
             except mds.MdsException:
@@ -83,7 +83,7 @@ class MDSConnection(DataSource):
         attrs.update(self._get_units(query))
         attrs.update({'shot': self.shot, 'query': query})
 
-        return xray.DataArray(data, coords=coords, name=query, attrs=attrs)
+        return xarray.DataArray(data, coords=coords, name=query, attrs=attrs)
 
     def _get_dim(self, i, query, name, *args):
         """ Get i-th dimension of the specified query. """
