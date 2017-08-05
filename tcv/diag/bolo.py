@@ -9,7 +9,7 @@ from scipy import signal
 from scipy import io
 import os
 import tcv
-import xray
+import xarray
 
 
 class Bolo(object):
@@ -43,7 +43,7 @@ class Bolo(object):
 
         Returns:
         -------
-        Calibrated BOLO signals in the form of xray-DataArray
+        Calibrated BOLO signals in the form of xarray-DataArray
         Attributes:
         -------
         shot: int
@@ -70,7 +70,7 @@ class Bolo(object):
         # collect the raw data
         raw = conn.tdi(r'\base::bolo:source', dims=('time', 'los'))
         # we lack the correct time bases so we load it
-        # and substitue in the XRAY data set
+        # and substitue in the xarray data set
         time = conn.tdi(r'dim_of(\base::bolo:signals)').values
         raw.time.values = time
         # collect the gains
@@ -93,9 +93,9 @@ class Bolo(object):
         if start < 0 and offset:
             raw -= raw.where(((raw.time < 0) &
                               (raw.time > 0.7 * start))).mean(dim='time')
-            print ' -- Offset removal -- '
+            print(' -- Offset removal -- ')
         else:
-            print ' -- Offset not removed  --'
+            print(' -- Offset not removed  --')
 
         # now we compute the calibrated data
         if filter == 'gottardi':
@@ -115,8 +115,8 @@ class Bolo(object):
                                                      calibration.shape[0]) *
                           etendue.values.reshape(1,
                                                  etendue.shape[0]) * convfact)
-        # transform data on xray data source and adding geo as a dictionary
-        out = xray.DataArray(data, dims=('time', 'los'))
+        # transform data on xarray data source and adding geo as a dictionary
+        out = xarray.DataArray(data, dims=('time', 'los'))
         if filter == 'gottardi':
             out.coords['time'] = ts
         else:
@@ -132,7 +132,7 @@ class Bolo(object):
         if Los is None:
             return out
         else:
-            print ' -- selecting chords -- '
+            print(' -- selecting chords -- ')
             out2 = out.sel(los=Los)
             return out2
 

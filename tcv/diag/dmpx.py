@@ -11,7 +11,7 @@ from scipy import io  # this is needed to load the settings of xtomo
 import numpy as np
 
 import tcv  # this is the tcv main library component
-import xray  # this is needed as tdi save into an xray
+import xarray  # this is needed as tdi save into an xarray
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -108,7 +108,7 @@ class Top(object):
         Returns
         -------
 
-        An xray.DataArray containing the data, time basis and all the
+        An xarray.DataArray containing the data, time basis and all the
         information in dictionary
 
         Examples
@@ -132,8 +132,8 @@ class Top(object):
                 values.append(conn.tdi(Top._node(card, channel, fast),
                               dims='time'))
 
-        # now we create the xray
-        data = xray.concat(values, dim='los')
+        # now we create the xarray
+        data = xarray.concat(values, dim='los')
         data['los'] = los
         # correct for bad timing
         if shot > 19923 and shot < 20939:

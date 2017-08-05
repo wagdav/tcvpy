@@ -35,7 +35,7 @@ class General(object):
 
         Returns
         -------
-        xray Data set with the current time traces
+        xarray Data set with the current time traces
 
         Examples
         -------
@@ -68,7 +68,7 @@ class General(object):
 
         Returns
         -------
-        xray Data set with the toroidal field time traces
+        xarray Data set with the toroidal field time traces
 
         Examples
         -------
@@ -103,7 +103,7 @@ class General(object):
 
         Returns
         -------
-        xray Data set with the Line Integrated Density
+        xarray Data set with the Line Integrated Density
         field time traces
 
         Examples
@@ -137,7 +137,7 @@ class General(object):
 
         Returns
         -------
-        xray Data set with the Line Average Density field time traces
+        xarray Data set with the Line Average Density field time traces
 
         Examples
         -------
@@ -171,7 +171,7 @@ class General(object):
               loads the qedge rather than the q95
         Returns
         -------
-        xray Data set with the q computed as default at 95% of
+        xarray Data set with the q computed as default at 95% of
         poloidal Flux. If edge is se to True
         it load the edge value
 
@@ -214,7 +214,7 @@ class General(object):
         edge : Boolean. If true it loads the valued at the edge
         Returns
         -------
-        xray Data set with the elongation computed as default at
+        xarray Data set with the elongation computed as default at
         95% of poloidal Flux. If edge is se to True
         it loads the edge value
 
@@ -259,7 +259,7 @@ class General(object):
                loads value at the edge
         Returns
         -------
-        xray Data set with the triangularity computed as default
+        xarray Data set with the triangularity computed as default
         at 95% of poloidal Flux. If edge is se to True
         it load the edge value
 
@@ -302,7 +302,7 @@ class General(object):
                plots the current time traces
         Returns
         -------
-        xray Data set with the central temperature.
+        xarray Data set with the central temperature.
         Remember that there are 6 values (for different foil couples)
         It is generally convenient to use first one
 
@@ -325,5 +325,5 @@ class General(object):
                 ax.set_xlabel(r't [s]')
                 ax.set_ylabel(r'T_e [keV]')
             return data
-        except:
-            print 'No data stored for Xte for this shot'
+        except Exception:
+            print('No data stored for Xte for this shot')

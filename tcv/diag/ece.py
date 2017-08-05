@@ -4,7 +4,7 @@ ECE - Electron Cyclotron Emission
 import logging
 
 import numpy as np
-import xray
+import xarray
 
 import tcv
 
@@ -47,7 +47,7 @@ class Lfs(object):
                     values.append(conn.tdi(channel, dims='time'))
                     used_los.append(i+1)
 
-        data = xray.concat(values, dim='los')
+        data = xarray.concat(values, dim='los')
         data.coords['los'] = used_los
         # TODO: add frequency coordinate
 

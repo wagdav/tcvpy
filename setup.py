@@ -17,12 +17,12 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'MDSplus',
     'numpy',
-    'xray',
+    'xarray',
 ]
 
 setup(
     name='tcvpy',
-    version='0.2.0',
+    version='0.3.0',
     description="Python data access library for TCV experiments",
     long_description=readme + '\n\n' + history,
     author="David Wagner",
