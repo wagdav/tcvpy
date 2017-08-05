@@ -4,6 +4,8 @@ BOLO diagnostic
 Written by Nicola Vianello
 """
 
+from __future__ import print_function
+
 import numpy
 from scipy import signal
 from scipy import io

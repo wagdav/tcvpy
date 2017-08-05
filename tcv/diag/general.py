@@ -4,6 +4,7 @@
 # central density from thomson, central temperature from thomson,
 # central temperature from
 # double filter
+from __future__ import print_function
 import tcv
 import matplotlib as mpl
 
